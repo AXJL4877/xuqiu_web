@@ -1,27 +1,13 @@
-"use client";
-
-import { motion } from "framer-motion";
 import type { ReactNode } from "react";
+
+import { cn } from "@/lib/utils";
 
 type DrawerSectionProps = {
   children: ReactNode;
-  index: number;
   className?: string;
 };
 
-export function DrawerSection({ children, index, className }: DrawerSectionProps) {
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{
-        delay: 0.04 * index,
-        duration: 0.35,
-        ease: [0.22, 1, 0.36, 1],
-      }}
-      className={className}
-    >
-      {children}
-    </motion.section>
-  );
+/** 配置抽屉内区块：不做独立缓入，避免与侧栏动画叠加导致卡顿 */
+export function DrawerSection({ children, className }: DrawerSectionProps) {
+  return <section className={cn(className)}>{children}</section>;
 }

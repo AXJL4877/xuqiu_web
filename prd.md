@@ -48,7 +48,7 @@
 - **界面样式**：Tailwind CSS + Framer Motion(提供丝滑动画)
 - **组件库**：shadcn/ui
 - **编辑器**：TipTap (便于实现划词菜单)
-- **数据库**：PostgreSQL
+- **数据库**：PostgreSQL（Prisma 7 + `@prisma/adapter-pg`，连接串 `DATABASE_URL`；迁移可用 `DIRECT_URL`）
 - **状态管理**：Zustand
 - **AI 接入**：Vercel AI SDK (处理流式输出)
 
@@ -64,43 +64,63 @@
 │   └── shared/          # 通用UI组件
 ├── lib/
 │   ├── ai/              # AI指令与大模型封装
-│   └── prisma.ts        # 数据库客户端
+│   └── prisma.ts        # PostgreSQL 客户端（PrismaPg 适配器）
 ├── prisma/
-│   └── schema.prisma    # 数据模型定义
+│   ├── schema.prisma    # 数据模型定义（provider = postgresql）
+│   └── migrations/      # 数据库迁移文件
 └── store/               # Zustand全局状态
 ```
 
 ### 数据模型定义
 ```prisma
+datasource db {
+  provider = "postgresql"
+}
+
 // 用户表
 model User {
-  id            String     @id @default(cuid())
-  email         String     @unique
-  documents     Document[] 
-  templates     Template[] 
-  createdAt     DateTime   @default(now())
+  id          String       @id @default(cuid())
+  email       String       @unique
+  documents   Document[]
+  templates   Template[]
+  aiProviders AiProvider[]
+  createdAt   DateTime     @default(now())
+}
+
+// AI 模型配置（DeepSeek 等，存于 PostgreSQL）
+model AiProvider {
+  id        String   @id @default(cuid())
+  name      String
+  baseUrl   String
+  apiKey    String
+  model     String
+  isDefault Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 需求文档表
 model Document {
-  id            String   @id @default(cuid())
-  title         String   @default("未命名需求文档")
-  content       String   @db.Text 
-  isDeleted     Boolean  @default(false) 
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt 
+  id        String   @id @default(cuid())
+  title     String   @default("未命名需求文档")
+  content   String
+  isDeleted Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 自定义模板表
 model Template {
-  id            String   @id @default(cuid())
-  name          String   
-  structure     Json     // 存储大纲与格式配置
-  fileType      String   @default("md") 
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  id        String @id @default(cuid())
+  name      String
+  structure Json   // 存储大纲与格式配置
+  fileType  String @default("md")
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 ```
 

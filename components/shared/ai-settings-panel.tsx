@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -110,7 +109,7 @@ export function AiSettingsPanel({
     return (
       <div
         className={cn(
-          "bg-card/80 animate-pulse rounded-xl border border-border/80 p-4",
+          "bg-card/80 min-h-[300px] animate-pulse rounded-xl border border-border/80 p-4",
           className,
         )}
         aria-hidden
@@ -187,7 +186,7 @@ export function AiSettingsPanel({
       </div>
 
       {providers.length > 0 ? (
-        <motion.div className="mb-4 space-y-2">
+        <div className="mb-4 space-y-2">
           <p className="text-xs font-medium">已保存的模型</p>
           <ul className="max-h-48 space-y-2 overflow-y-auto pr-0.5">
             {providers.map((p) => (
@@ -210,7 +209,7 @@ export function AiSettingsPanel({
                     {p.model} · {p.baseUrl}
                   </span>
                 </button>
-                <motion.div className="mt-2 flex gap-2">
+                <div className="mt-2 flex gap-2">
                   <Button
                     type="button"
                     size="sm"
@@ -239,11 +238,11 @@ export function AiSettingsPanel({
                     <Trash2 className="size-3.5 shrink-0" aria-hidden />
                     删除
                   </Button>
-                </motion.div>
+                </div>
               </li>
             ))}
           </ul>
-        </motion.div>
+                </div>
       ) : null}
 
       <div className="mb-3 flex items-center justify-between gap-2">
