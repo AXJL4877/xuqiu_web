@@ -9,6 +9,7 @@ import { SectionEditor } from "@/components/generate/section-editor";
 import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
 import { Button } from "@/components/ui/button";
 import type { ApiTemplate } from "@/lib/generate-types";
+import { drawerContentDelay } from "@/lib/motion-presets";
 import type { TemplateSectionItem } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +104,10 @@ export function GenerateConfigDrawer({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+        <div
+          className="generate-drawer-content flex shrink-0 items-center justify-between border-b border-border px-4 py-3"
+          style={{ animationDelay: drawerContentDelay(0) }}
+        >
           <h2 className="text-sm font-semibold">生成配置</h2>
           <Button
             type="button"
@@ -117,11 +121,11 @@ export function GenerateConfigDrawer({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-          <DrawerSection>
+          <DrawerSection index={1}>
             <AiSettingsPanel variant="picker" className="border-0 p-0 shadow-none" />
           </DrawerSection>
 
-          <DrawerSection className="mt-5">
+          <DrawerSection index={2} className="mt-5">
             <label className="text-sm font-medium" htmlFor="drawer-idea">
               项目创意
             </label>
@@ -136,7 +140,7 @@ export function GenerateConfigDrawer({
             />
           </DrawerSection>
 
-          <DrawerSection className="mt-5">
+          <DrawerSection index={3} className="mt-5">
             <SectionEditor
               sections={sections}
               onToggle={onToggleSection}
@@ -147,7 +151,7 @@ export function GenerateConfigDrawer({
             />
           </DrawerSection>
 
-          <DrawerSection className="mt-5">
+          <DrawerSection index={4} className="mt-5">
             <Button
               type="button"
               className="w-full"
@@ -159,7 +163,7 @@ export function GenerateConfigDrawer({
             </Button>
           </DrawerSection>
 
-          <DrawerSection className="mt-5 border-t border-border pt-5">
+          <DrawerSection index={5} className="mt-5 border-t border-border pt-5">
             <h3 className="mb-3 text-sm font-semibold">我的模板</h3>
             {templates.length === 0 ? (
               <p className="text-muted-foreground text-xs">暂无模板</p>

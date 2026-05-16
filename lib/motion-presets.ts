@@ -35,3 +35,7 @@ export const drawerBackdropTransition: Transition = {
 
 /** 首页子元素依次缓入的 delay（秒） */
 export const fadeUpDelay = (index: number) => `${0.05 + index * 0.07}s`;
+
+/** 生成配置抽屉内容缓入 delay（秒），略晚于面板滑入起点 */
+export const drawerContentDelay = (index: number) =>
+  `${0.12 + index * 0.06}s`;

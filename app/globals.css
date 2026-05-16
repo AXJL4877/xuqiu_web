@@ -212,6 +212,16 @@
   transform: translate3d(0, 0, 0);
 }
 
+.generate-drawer-root[data-open="false"] .generate-drawer-content {
+  opacity: 0;
+  transform: translate3d(0, 12px, 0);
+}
+
+.generate-drawer-root[data-open="true"] .generate-drawer-content {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .generate-drawer-backdrop {
     transition: opacity 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -219,6 +229,10 @@
 
   .generate-drawer-panel {
     transition: transform 0.36s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .generate-drawer-root[data-open="true"] .generate-drawer-content {
+    animation: fade-up-in 0.42s cubic-bezier(0.25, 0.1, 0.25, 1) both;
   }
 }
 
