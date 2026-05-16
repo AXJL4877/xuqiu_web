@@ -9,6 +9,11 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
+    // 连接池地址（应用运行时 / Vercel 默认）
     url: process.env["DATABASE_URL"],
+    // 直连地址（migrate deploy；Neon / Vercel Postgres 建议配置 DIRECT_URL）
+    ...(process.env["DIRECT_URL"]
+      ? { directUrl: process.env["DIRECT_URL"] }
+      : {}),
   },
 });

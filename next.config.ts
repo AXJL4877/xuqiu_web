@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Vercel 自动处理部署，无需 output: "standalone"（Docker 部署见 Dockerfile） */
 };
 
 export default nextConfig;

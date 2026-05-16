@@ -1,4 +1,4 @@
-// 本地 SQLite，无需 PostgreSQL / MySQL 服务
+// PostgreSQL（本地可用 docker compose，线上配置 DATABASE_URL）
 
 generator client {
   provider = "prisma-client-js"
@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model User {

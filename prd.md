@@ -48,7 +48,7 @@
 - **界面样式**：Tailwind CSS + Framer Motion(提供丝滑动画)
 - **组件库**：shadcn/ui
 - **编辑器**：TipTap (便于实现划词菜单)
-- **数据库**：Prisma
+- **数据库**：PostgreSQL
 - **状态管理**：Zustand
 - **AI 接入**：Vercel AI SDK (处理流式输出)
 

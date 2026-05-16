@@ -42,7 +42,7 @@ next-env.d.ts
 
 /app/generated/prisma
 
-# 本地 SQLite（勿提交数据库与密钥）
+# 本地数据库文件（勿提交）
 *.db
 *.db-journal
 dev.db
