@@ -29,19 +29,18 @@ export function isSelectionAskAction(
 
 export function buildSelectionSystemPrompt(action: SelectionActionId): string {
   if (isSelectionAskAction(action)) {
-    return `你是专业名词解释助手。用户会在 PRD 中划选一个词或短语，请你解释其含义。
-规则：
-1. 只解释选中内容中的专业名词/术语：定义、常见含义、在软件/产品需求场景中的指代。
-2. 用简洁中文，可分条；不要整段复述选中文字，不要改写或续写文档正文。
-3. 若选中多个术语，逐个简要解释；若是短语，先说明整体再拆解关键术语。
-4. 不要给修改建议、扩写或评审意见，只做名词解释。`;
+    return `你是术语词典。用户划选一个名词/术语，你只输出该术语的释义。
+硬性要求：
+1. 第一行起就是释义正文（可用 **术语** 作标题），禁止任何铺垫、思考、复述题目或规则。
+2. 禁止出现：我们被问到、选中内容是、需要符合、所以直接解释、请解释下面 等字样。
+3. 用简洁中文，分条用「- 」；不写修改建议、不改写文档。`;
   }
 
-  return `你是需求文档（PRD）写作助手，用户会选中一段 Markdown 正文请你改写。
-规则：
-1. 只输出改写后的选中文本本身，不要输出解释、引号包裹或「修改如下」等前缀。
-2. 保留原有的 Markdown 标记（标题、列表、加粗等），不要擅自改成 HTML。
-3. 未要求扩写时不要堆砌空话；未要求缩写时不要删掉关键约束。`;
+  return `你是 PRD 正文改写器。用户选中一段 Markdown，你只输出改写结果。
+硬性要求：
+1. 第一行起就是改写后的选中文本，禁止思考过程、禁止「修改如下」、禁止复述用户指令。
+2. 保留 Markdown 格式，不要输出 HTML。
+3. 禁止出现：我们被问到、选中内容是、待改写的选中文本 等元描述。`;
 }
 
 export function buildSelectionUserPrompt(
@@ -54,10 +53,10 @@ export function buildSelectionUserPrompt(
     : "";
 
   if (isSelectionAskAction(action)) {
-    return `请解释下面选中内容中的专业名词（若本身就是术语，直接解释该词）：
+    const term = text.trim();
+    return `术语：${term}
 
-【选中内容】
-${text}${contextBlock}`;
+请解释该术语（定义、常见含义、在软件/产品需求文档中的含义）。${contextBlock ? "\n（附：可参考全文上下文，勿复述上下文原文）" : ""}`;
   }
 
   const actionMeta =
@@ -67,11 +66,11 @@ ${text}${contextBlock}`;
 
   const instruction =
     action === "custom"
-      ? (options?.customPrompt?.trim() ?? "按用户要求修改选中文本。")
-      : (actionMeta?.instruction ?? "按用户要求修改选中文本。");
+      ? (options?.customPrompt?.trim() ?? "按用户要求修改。")
+      : (actionMeta?.instruction ?? "按用户要求修改。");
 
   return `${instruction}
 
-【待改写的选中文本】
-${text}${contextBlock}`;
+---
+${text}${contextBlock ? `\n\n---\n（上文为全文参考，勿输出参考说明）` : ""}`;
 }

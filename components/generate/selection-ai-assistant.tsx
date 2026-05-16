@@ -1,5 +1,6 @@
 "use client";
 
+import type { Editor } from "@tiptap/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Sparkles, X } from "lucide-react";
 import {
@@ -11,29 +12,27 @@ import {
   type RefObject,
 } from "react";
 
+import { htmlToMarkdown } from "@/lib/markdown";
+
 import { Button } from "@/components/ui/button";
 import {
   isSelectionAskAction,
   SELECTION_ACTIONS,
   type SelectionActionId,
 } from "@/lib/ai/selection-prompt";
+import { sanitizeSelectionOutput } from "@/lib/ai/sanitize-selection";
 import {
   type AiSettings,
   isAiSettingsConfigured,
 } from "@/lib/ai/settings";
-import {
-  clampToolbarPosition,
-  getTextareaCaretClientRect,
-  replaceTextareaRange,
-} from "@/lib/textarea-selection";
-type SelectionRange = {
-  start: number;
-  end: number;
-  text: string;
-};
+import { replaceTextareaRange } from "@/lib/textarea-selection";
+type SelectionRange =
+  | { source: "textarea"; start: number; end: number; text: string }
+  | { source: "editor"; from: number; to: number; text: string };
 
 type SelectionAiAssistantProps = {
-  textareaRef: RefObject<HTMLTextAreaElement | null>;
+  textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  editor?: Editor | null;
   value: string;
   onApply: (next: string) => void;
   disabled?: boolean;
@@ -43,11 +42,9 @@ type SelectionAiAssistantProps = {
   providerName?: string | null;
 };
 
-const TOOLBAR_W = 420;
-const TOOLBAR_H = 120;
-
 export function SelectionAiAssistant({
   textareaRef,
+  editor,
   value,
   onApply,
   disabled = false,
@@ -59,9 +56,6 @@ export function SelectionAiAssistant({
   const customInputId = useId();
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState<SelectionRange | null>(null);
-  const [toolbarPos, setToolbarPos] = useState<{ x: number; y: number } | null>(
-    null,
-  );
   const [customOpen, setCustomOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
 
@@ -75,81 +69,72 @@ export function SelectionAiAssistant({
   );
 
   const readSelection = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el || disabled) return null;
+    if (disabled) return null;
+
+    if (editor?.isEditable) {
+      const { from, to } = editor.state.selection;
+      if (from === to) return null;
+      const text = editor.state.doc.textBetween(from, to, "\n");
+      if (!text.trim()) return null;
+      return { source: "editor" as const, from, to, text };
+    }
+
+    const el = textareaRef?.current;
+    if (!el) return null;
     const start = el.selectionStart;
     const end = el.selectionEnd;
     if (start === end) return null;
     const text = value.slice(start, end);
     if (!text.trim()) return null;
-    return { start, end, text };
-  }, [textareaRef, value, disabled]);
+    return { source: "textarea" as const, start, end, text };
+  }, [editor, textareaRef, value, disabled]);
 
-  const updateToolbarFromSelection = useCallback(
-    (clientX?: number, clientY?: number) => {
-      const sel = readSelection();
-      if (!sel) {
-        if (!diffOpen) {
-          setRange(null);
-          setToolbarPos(null);
-        }
-        return;
-      }
-      setRange(sel);
-
-      const el = textareaRef.current;
-      if (!el) return;
-
-      let x = clientX ?? 0;
-      let y = clientY ?? 0;
-      if (clientX == null || clientY == null) {
-        const caret = getTextareaCaretClientRect(el, sel.end);
-        x = caret.left;
-        y = caret.top;
-      }
-
-      const clamped = clampToolbarPosition(
-        x - TOOLBAR_W / 2,
-        y - TOOLBAR_H - 12,
-        TOOLBAR_W,
-        TOOLBAR_H,
-      );
-      setToolbarPos(clamped);
-    },
-    [readSelection, textareaRef, diffOpen],
-  );
+  const confirmSelection = useCallback(() => {
+    const sel = readSelection();
+    if (!sel) {
+      if (!diffOpen) setRange(null);
+      return;
+    }
+    setRange(sel);
+  }, [readSelection, diffOpen]);
 
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el || disabled) return;
+    if (disabled) return;
 
-    const onSelect = (e: MouseEvent | KeyboardEvent) => {
+    const onSelect = () => {
       if (diffOpen) return;
       const sel = readSelection();
       if (!sel) {
         setRange(null);
-        setToolbarPos(null);
         return;
       }
-      if (e instanceof MouseEvent) {
-        updateToolbarFromSelection(e.clientX, e.clientY);
-      } else {
-        updateToolbarFromSelection();
-      }
+      confirmSelection();
     };
 
-    el.addEventListener("mouseup", onSelect);
-    el.addEventListener("keyup", onSelect);
+    const el = textareaRef?.current;
+    const dom = editor?.view?.dom;
+    el?.addEventListener("mouseup", onSelect);
+    el?.addEventListener("keyup", onSelect);
+    dom?.addEventListener("mouseup", onSelect);
+    dom?.addEventListener("keyup", onSelect);
     return () => {
-      el.removeEventListener("mouseup", onSelect);
-      el.removeEventListener("keyup", onSelect);
+      el?.removeEventListener("mouseup", onSelect);
+      el?.removeEventListener("keyup", onSelect);
+      dom?.removeEventListener("mouseup", onSelect);
+      dom?.removeEventListener("keyup", onSelect);
     };
-  }, [textareaRef, disabled, readSelection, updateToolbarFromSelection, diffOpen]);
+  }, [
+    textareaRef,
+    editor,
+    disabled,
+    readSelection,
+    confirmSelection,
+    diffOpen,
+  ]);
 
   useEffect(() => {
     if (disabled) {
       setRange(null);
-      setToolbarPos(null);
       setDiffOpen(false);
     }
   }, [disabled]);
@@ -159,14 +144,14 @@ export function SelectionAiAssistant({
       if (diffOpen) return;
       const target = e.target as Node;
       if (toolbarRef.current?.contains(target)) return;
-      if (textareaRef.current?.contains(target)) return;
+      if (textareaRef?.current?.contains(target)) return;
+      if (editor?.view?.dom.contains(target)) return;
       setRange(null);
-      setToolbarPos(null);
       setCustomOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [diffOpen, textareaRef]);
+  }, [diffOpen, textareaRef, editor]);
 
   const runAction = async (
     action: SelectionActionId,
@@ -178,7 +163,6 @@ export function SelectionAiAssistant({
     setResult("");
     setDiffOpen(true);
     setStreaming(true);
-    setToolbarPos(null);
     setCustomOpen(false);
 
     try {
@@ -232,7 +216,14 @@ export function SelectionAiAssistant({
         const { done, value: chunk } = await reader.read();
         if (done) break;
         buf += dec.decode(chunk, { stream: true });
-        setResult(buf);
+
+        if (buf.startsWith("【改写失败】") || buf.startsWith("【回答失败】")) {
+          continue;
+        }
+
+        setResult(
+          sanitizeSelectionOutput(buf, action, range.text, true),
+        );
       }
 
       if (buf.startsWith("【改写失败】") || buf.startsWith("【回答失败】")) {
@@ -242,10 +233,14 @@ export function SelectionAiAssistant({
             .split("\n")[0] ?? "请求失败",
         );
         setResult("");
-      } else if (!buf.trim()) {
-        setError(
-          "模型未返回内容，请检查模型名称（deepseek-v4-flash / deepseek-v4-pro）与 API Key。",
-        );
+      } else {
+        const cleaned = sanitizeSelectionOutput(buf, action, range.text);
+        setResult(cleaned);
+        if (!cleaned.trim()) {
+          setError(
+            "模型未返回有效内容，请检查模型名称（deepseek-v4-flash / deepseek-v4-pro）与 API Key。",
+          );
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "请求失败");
@@ -256,13 +251,20 @@ export function SelectionAiAssistant({
 
   const handleAccept = () => {
     if (!range || !result.trim()) return;
-    const next = replaceTextareaRange(
-      value,
-      range.start,
-      range.end,
-      result.trimEnd(),
-    );
-    onApply(next);
+    const trimmed = result.trimEnd();
+
+    if (range.source === "editor" && editor) {
+      editor
+        .chain()
+        .focus()
+        .insertContentAt({ from: range.from, to: range.to }, trimmed)
+        .run();
+      onApply(htmlToMarkdown(editor.getHTML()));
+    } else if (range.source === "textarea") {
+      onApply(
+        replaceTextareaRange(value, range.start, range.end, trimmed),
+      );
+    }
     closeDiff();
   };
 
@@ -273,11 +275,9 @@ export function SelectionAiAssistant({
     setActiveAction(null);
     setStreamMode(null);
     setRange(null);
-    setToolbarPos(null);
   };
 
-  const showToolbar =
-    Boolean(range && toolbarPos && !diffOpen && !disabled);
+  const showToolbar = Boolean(range && !diffOpen && !disabled);
 
   const isAskMode = activeAction != null && isSelectionAskAction(activeAction);
 
@@ -301,12 +301,7 @@ export function SelectionAiAssistant({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
             transition={{ duration: 0.16 }}
-            className="bg-popover fixed z-50 max-w-[calc(100vw-16px)] rounded-xl border border-border p-2 shadow-lg"
-            style={{
-              left: toolbarPos!.x,
-              top: toolbarPos!.y,
-              width: TOOLBAR_W,
-            }}
+            className="bg-popover fixed top-1/2 left-1/2 z-[100] w-[min(420px,calc(100vw-16px))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border p-2 shadow-lg"
           >
             <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 px-1 text-[11px]">
               <Sparkles className="text-primary size-3.5 shrink-0" />
@@ -395,13 +390,13 @@ export function SelectionAiAssistant({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="bg-background/80 absolute inset-0 z-40 flex flex-col backdrop-blur-[2px]"
+            className="bg-background/80 fixed inset-0 z-[90] flex items-center justify-center p-4 backdrop-blur-[2px]"
           >
             <motion.div
-              initial={{ y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 16, opacity: 0 }}
-              className="bg-card mt-auto flex max-h-[min(70%,520px)] min-h-0 flex-col border-t border-border shadow-[0_-8px_30px_rgba(0,0,0,0.08)]"
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.98, opacity: 0 }}
+              className="bg-card flex max-h-[min(85vh,560px)] w-full max-w-4xl min-h-0 flex-col overflow-hidden rounded-xl border border-border shadow-xl"
             >
               <motion.div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-2.5">
                 <div className="min-w-0">
@@ -414,8 +409,8 @@ export function SelectionAiAssistant({
                   <p className="text-muted-foreground text-xs">
                     {streaming
                       ? isAskMode
-                        ? "正在解释术语…"
-                        : "AI 正在改写…"
+                        ? "正在流式解释术语…"
+                        : "AI 正在流式改写…"
                       : streamMode === "live"
                         ? "大模型输出"
                         : streamMode === "demo"

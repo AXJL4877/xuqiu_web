@@ -1,7 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 
 import { GenerateConfigDrawer } from "@/components/generate/generate-config-drawer";
 import { SelectionAiAssistant } from "@/components/generate/selection-ai-assistant";
@@ -22,21 +29,37 @@ import {
 } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
 
-const PREVIEW_STORAGE_KEY = "xuqiu-generate-preview";
-
 type GenerateViewProps = {
   initialTemplates: ApiTemplate[];
 };
 
+function resetGenerateFormState(
+  setIdea: (v: string) => void,
+  setSections: (v: TemplateSectionItem[]) => void,
+  setPreview: (v: string) => void,
+  setPreviewDirty: (v: boolean) => void,
+  setStreamMode: (v: "idle" | "demo" | "live") => void,
+  setError: (v: string | null) => void,
+  previewLockedRef: MutableRefObject<boolean>,
+) {
+  setIdea("");
+  setSections(defaultStructure().sections);
+  setPreview("");
+  setPreviewDirty(false);
+  setStreamMode("idle");
+  setError(null);
+  previewLockedRef.current = false;
+}
+
 export function GenerateView({ initialTemplates }: GenerateViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [idea, setIdea] = useState("");
   const [sections, setSections] = useState<TemplateSectionItem[]>(() =>
     defaultStructure().sections,
   );
   const [preview, setPreview] = useState("");
   const [previewDirty, setPreviewDirty] = useState(false);
-  const [previewSavedAt, setPreviewSavedAt] = useState<number | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [streamMode, setStreamMode] = useState<"idle" | "demo" | "live">(
     "idle",
@@ -57,16 +80,23 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
   const previewLockedRef = useRef(false);
 
   useEffect(() => {
+    if (searchParams.get("fresh") !== "1") return;
     try {
-      const saved = localStorage.getItem(PREVIEW_STORAGE_KEY);
-      if (saved) {
-        setPreview(saved);
-        setPreviewSavedAt(Date.now());
-      }
+      localStorage.removeItem("xuqiu-generate-preview");
     } catch {
-      /* 隐私模式等环境下可能不可用 */
+      /* ignore */
     }
-  }, []);
+    resetGenerateFormState(
+      setIdea,
+      setSections,
+      setPreview,
+      setPreviewDirty,
+      setStreamMode,
+      setError,
+      previewLockedRef,
+    );
+    router.replace("/generate");
+  }, [searchParams, router]);
 
   const loadTemplates = useCallback(async () => {
     const res = await fetch("/api/templates");
@@ -105,7 +135,6 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
     setPreview("");
     setPreviewDirty(false);
     previewLockedRef.current = false;
-    setPreviewSavedAt(null);
     setStreamMode("idle");
     setStreaming(true);
     setConfigOpen(false);
@@ -224,17 +253,6 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
     await loadTemplates();
   };
 
-  const savePreview = () => {
-    try {
-      localStorage.setItem(PREVIEW_STORAGE_KEY, preview);
-      setPreviewSavedAt(Date.now());
-      setPreviewDirty(false);
-      previewLockedRef.current = false;
-    } catch {
-      setError("无法保存预览（浏览器存储不可用）");
-    }
-  };
-
   const saveToWorkspace = async () => {
     if (!preview.trim()) return;
     setArchiving(true);
@@ -279,14 +297,6 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
     setPreviewDirty(true);
     previewLockedRef.current = true;
   };
-
-  const savedLabel = previewSavedAt
-    ? new Date(previewSavedAt).toLocaleTimeString("zh-CN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
-    : null;
 
   return (
     <div className="relative flex min-h-[calc(100dvh-0px)] flex-1 flex-col">
@@ -358,15 +368,6 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
             variant="outline"
             size="sm"
             disabled={!preview.trim()}
-            onClick={savePreview}
-          >
-            本地预览
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!preview.trim()}
             onClick={downloadMd}
           >
             下载 .md
@@ -394,13 +395,11 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
             <span className="font-medium text-foreground">文档预览</span>
             <span className="flex items-center gap-2">
               {previewDirty ? (
-                <span>未保存的修改</span>
-              ) : savedLabel ? (
-                <span>已保存 {savedLabel}</span>
+                <span>未保存的修改 · 请归档到工作台</span>
               ) : preview.trim() ? (
                 <span>划词可选用 AI 助手</span>
               ) : (
-                <span>生成后可直接编辑</span>
+                <span>填写创意后开始生成</span>
               )}
             </span>
           </div>

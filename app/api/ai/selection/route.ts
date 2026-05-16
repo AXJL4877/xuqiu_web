@@ -1,7 +1,7 @@
 import { streamText } from "ai";
 
 import { resolveAiConfigForRequest } from "@/lib/ai/config";
-import { createCompatibleOpenAI, isDeepSeekThinkingModel } from "@/lib/ai/openai-compatible";
+import { createCompatibleOpenAI } from "@/lib/ai/openai-compatible";
 import { demoSelectionStreamResponse } from "@/lib/ai/selection-demo";
 import { createAiStreamTextResponse } from "@/lib/ai/stream-text-response";
 import {
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     });
   }
 
-  const provider = createCompatibleOpenAI(ai);
+  const provider = createCompatibleOpenAI(ai, { disableThinking: true });
 
   try {
     const actionId = action as SelectionActionId;
@@ -59,13 +59,6 @@ export async function POST(req: Request) {
         question,
         context,
       }),
-      ...(isDeepSeekThinkingModel(ai.model)
-        ? {
-            providerOptions: {
-              openai: { reasoningEffort: "medium" as const },
-            },
-          }
-        : {}),
     });
 
     return createAiStreamTextResponse(result, {

@@ -2,6 +2,8 @@ import { getLocalUserId } from "@/lib/local-user";
 import { prisma } from "@/lib/prisma";
 import { parseTemplateStructure } from "@/lib/template-types";
 
+import { Suspense } from "react";
+
 import { GenerateView } from "./generate-view";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,15 @@ export default async function GeneratePage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <GenerateView initialTemplates={initialTemplates} />
+      <Suspense
+        fallback={
+          <p className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
+            加载中…
+          </p>
+        }
+      >
+        <GenerateView initialTemplates={initialTemplates} />
+      </Suspense>
     </div>
   );
 }

@@ -95,7 +95,10 @@ export function HomeLanding() {
           animate="visible"
           className="flex flex-wrap items-center justify-center gap-3"
         >
-          <Link href="/generate" className={cn(buttonVariants({ size: "lg" }))}>
+          <Link
+            href="/generate?fresh=1"
+            className={cn(buttonVariants({ size: "lg" }))}
+          >
             开始智能生成
           </Link>
           <Link

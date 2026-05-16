@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TiptapEditor } from "@/components/editor/tiptap-editor";
+import { SelectionAiAssistant } from "@/components/generate/selection-ai-assistant";
 import { BackToHome } from "@/components/shared/back-to-home";
+import { useAiProviders } from "@/hooks/use-ai-providers";
+import type { Editor } from "@tiptap/react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { DocumentRecord } from "@/lib/document-db";
 import { suggestTitleFromMarkdown } from "@/lib/markdown";
@@ -21,6 +24,12 @@ type DocumentEditorViewProps = {
 
 export function DocumentEditorView({ documentId }: DocumentEditorViewProps) {
   const router = useRouter();
+  const {
+    settings: aiSettings,
+    configured: aiConfigured,
+    activeProvider,
+  } = useAiProviders();
+  const [editor, setEditor] = useState<Editor | null>(null);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [markdown, setMarkdown] = useState("");
@@ -273,15 +282,25 @@ export function DocumentEditorView({ documentId }: DocumentEditorViewProps) {
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl min-h-0 flex-1 flex-col p-4 sm:p-6">
-        <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border shadow-sm">
+        <div className="bg-card relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border shadow-sm">
           <TiptapEditor
             key={documentId}
             initialMarkdown={markdown}
             onMarkdownChange={handleMarkdownChange}
+            onEditorReady={setEditor}
+          />
+          <SelectionAiAssistant
+            editor={editor}
+            value={markdown}
+            onApply={handleMarkdownChange}
+            aiSettings={aiSettings}
+            configured={aiConfigured}
+            providerId={activeProvider?.id ?? null}
+            providerName={activeProvider?.name ?? null}
           />
         </div>
         <p className="text-muted-foreground mt-3 text-center text-xs">
-          富文本编辑 · 停止输入约 {AUTOSAVE_MS}ms 后自动保存 · 支持 Markdown 快捷键（如 ## 、**）
+          富文本编辑 · 划词扩写/缩写/名词解释 · 约 {AUTOSAVE_MS}ms 自动保存
         </p>
       </main>
     </div>

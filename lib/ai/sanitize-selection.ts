@@ -1,0 +1,70 @@
+import {
+  isSelectionAskAction,
+  type SelectionActionId,
+} from "@/lib/ai/selection-prompt";
+
+const META_LINE =
+  /^(我们|用户|选中|需要|所以|请解释|只解释|【选中|【全文|待改写|项目创意|规则[：:]|输出必须从|禁止输出)/;
+
+/** 去掉模型复述指令、思考过程等元话术，只保留可用正文 */
+export function sanitizeSelectionOutput(
+  raw: string,
+  action: SelectionActionId,
+  selectedText: string,
+  streaming = false,
+): string {
+  let text = raw.trim();
+  if (!text || text.startsWith("【改写失败】")) return text;
+
+  if (streaming) {
+    const head = text.slice(0, 280);
+    if (isSelectionAskAction(action)) {
+      const term = selectedText.trim();
+      const anchor = term ? text.indexOf(`**${term}**`) : -1;
+      if (
+        anchor === -1 &&
+        /我们被问到|选中内容是|请解释下面|需要符合|所以直接|我们需解释/.test(
+          head,
+        )
+      ) {
+        return "";
+      }
+    } else if (/^以下是|^修改如下|^改写后[：:]|^好的[，,]/.test(head)) {
+      return "";
+    }
+  }
+
+  const lines = text.split("\n");
+  const filtered = lines.filter((line) => {
+    const t = line.trim();
+    if (!t) return true;
+    if (META_LINE.test(t)) return false;
+    if (t.includes("请解释下面选中内容")) return false;
+    if (t.includes("若本身就是术语")) return false;
+    if (selectedText && t === selectedText.trim()) return false;
+    if (selectedText && t.includes(`"${selectedText.trim()}"`) && t.length < selectedText.length + 40)
+      return false;
+    return true;
+  });
+
+  text = filtered.join("\n").trim();
+
+  // 去掉包裹整段的引号复述
+  if (
+    selectedText &&
+    text.startsWith(`"${selectedText.trim()}"`) &&
+    text.length < selectedText.length + 30
+  ) {
+    text = "";
+  }
+
+  if (isSelectionAskAction(action) && text) {
+    const term = selectedText.trim();
+    const idx = text.indexOf(`**${term}**`);
+    if (idx > 80) {
+      text = text.slice(idx).trim();
+    }
+  }
+
+  return text.trim();
+}

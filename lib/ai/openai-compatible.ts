@@ -76,11 +76,17 @@ function transformDeepSeekSseStream(
 }
 
 /** 注入 DeepSeek 官方 thinking / reasoning_effort 参数 */
-function createOpenAiCompatibleFetch(): FetchFunction {
+function createOpenAiCompatibleFetch(
+  disableThinking = false,
+): FetchFunction {
   return async (input, init) => {
     let nextInit = init;
 
-    if (init?.method === "POST" && typeof init.body === "string") {
+    if (
+      !disableThinking &&
+      init?.method === "POST" &&
+      typeof init.body === "string"
+    ) {
       try {
         const body = JSON.parse(init.body) as Record<string, unknown>;
         const model =
@@ -122,10 +128,13 @@ function createOpenAiCompatibleFetch(): FetchFunction {
   };
 }
 
-export function createCompatibleOpenAI(ai: Pick<AiSettings, "apiKey" | "baseUrl">) {
+export function createCompatibleOpenAI(
+  ai: Pick<AiSettings, "apiKey" | "baseUrl">,
+  options?: { disableThinking?: boolean },
+) {
   return createOpenAI({
     apiKey: ai.apiKey,
     baseURL: ai.baseUrl,
-    fetch: createOpenAiCompatibleFetch(),
+    fetch: createOpenAiCompatibleFetch(options?.disableThinking),
   });
 }
