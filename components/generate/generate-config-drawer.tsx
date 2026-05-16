@@ -11,12 +11,13 @@ import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
 import { Button } from "@/components/ui/button";
 import type { ApiTemplate } from "@/lib/generate-types";
 import {
-  generateDrawerBackdropVariants,
-  generateDrawerPanelVariants,
-  generateDrawerRootVariants,
+  drawerBackdropTransition,
+  drawerPanelTransition,
 } from "@/lib/motion-presets";
 import type { TemplateSectionItem } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
+
+const DRAWER_WIDTH_PX = 400;
 
 type GenerateConfigDrawerProps = {
   open: boolean;
@@ -90,32 +91,41 @@ export function GenerateConfigDrawer({
 
   useBodyScrollLock(open);
 
-  const drawerMotion = reduceMotion
-    ? { initial: false as const, animate: undefined, exit: undefined }
+  const panelSlide = reduceMotion
+    ? { initial: false as const, animate: { x: 0 }, exit: { x: 0 } }
     : {
-        initial: "hidden" as const,
-        animate: "visible" as const,
-        exit: "exit" as const,
+        initial: { x: DRAWER_WIDTH_PX },
+        animate: { x: 0 },
+        exit: { x: DRAWER_WIDTH_PX },
+      };
+
+  const backdropFade = reduceMotion
+    ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 1 } }
+    : {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
       };
 
   const drawerLayer = mounted ? (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {open ? (
         <motion.div
           key="generate-config-drawer"
           className="fixed inset-0 z-50 flex justify-end"
-          variants={reduceMotion ? undefined : generateDrawerRootVariants}
-          {...drawerMotion}
+          role="presentation"
         >
           <motion.button
             type="button"
             aria-label="关闭配置面板"
-            variants={reduceMotion ? undefined : generateDrawerBackdropVariants}
             className="absolute inset-0 bg-black/30"
+            {...backdropFade}
+            transition={drawerBackdropTransition}
             onClick={() => onOpenChange(false)}
           />
           <motion.aside
-            variants={reduceMotion ? undefined : generateDrawerPanelVariants}
+            {...panelSlide}
+            transition={drawerPanelTransition}
             className={cn(
               "bg-card relative z-10 flex h-dvh max-h-dvh w-[min(100vw,400px)] flex-col border-l border-border shadow-xl",
             )}

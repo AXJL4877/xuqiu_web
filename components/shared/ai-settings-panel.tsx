@@ -106,11 +106,20 @@ export function AiSettingsPanel({
     }
   };
 
-  if (!hydrated || loading) {
+  if (variant === "picker" && !hydrated) {
+    return (
+      <section className={cn("w-full text-left", className)}>
+        <h3 className="text-sm font-semibold">AI 模型</h3>
+        <p className="text-muted-foreground mt-2 text-xs">加载中…</p>
+      </section>
+    );
+  }
+
+  if ((!hydrated || loading) && variant !== "picker") {
     return (
       <div
         className={cn(
-          variant === "compact" || variant === "picker"
+          variant === "compact"
             ? "bg-card/80 min-h-14 animate-pulse rounded-xl border border-border/80 p-4"
             : "bg-card/80 min-h-[300px] animate-pulse rounded-xl border border-border/80 p-4",
           className,
