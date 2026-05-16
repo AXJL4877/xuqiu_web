@@ -10,7 +10,10 @@ import { SectionEditor } from "@/components/generate/section-editor";
 import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
 import { Button } from "@/components/ui/button";
 import type { ApiTemplate } from "@/lib/generate-types";
-import { drawerPanelTransition } from "@/lib/motion-presets";
+import {
+  drawerBackdropTransition,
+  drawerPanelTransition,
+} from "@/lib/motion-presets";
 import type { TemplateSectionItem } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
 
@@ -92,10 +95,14 @@ export function GenerateConfigDrawer({
           key="generate-config-drawer"
           className="fixed inset-0 z-50 flex justify-end"
         >
-          <button
+          <motion.button
             type="button"
             aria-label="关闭配置面板"
-            className="drawer-backdrop-in absolute inset-0 bg-black/30"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={drawerBackdropTransition}
+            className="absolute inset-0 bg-black/30"
             onClick={() => onOpenChange(false)}
           />
           <motion.aside
@@ -122,14 +129,11 @@ export function GenerateConfigDrawer({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-              <DrawerSection index={0}>
-                <AiSettingsPanel
-                  variant="full"
-                  className="border-0 bg-transparent p-0 shadow-none"
-                />
+              <DrawerSection>
+                <AiSettingsPanel variant="picker" className="border-0 p-0 shadow-none" />
               </DrawerSection>
 
-              <DrawerSection index={1} className="mt-5">
+              <DrawerSection className="mt-5">
                 <label className="text-sm font-medium" htmlFor="drawer-idea">
                   项目创意
                 </label>
@@ -143,7 +147,7 @@ export function GenerateConfigDrawer({
                 />
               </DrawerSection>
 
-              <DrawerSection index={2} className="mt-5">
+              <DrawerSection className="mt-5">
                 <SectionEditor
                   sections={sections}
                   onToggle={onToggleSection}
@@ -154,7 +158,7 @@ export function GenerateConfigDrawer({
                 />
               </DrawerSection>
 
-              <DrawerSection index={3} className="mt-5">
+              <DrawerSection className="mt-5">
                 <Button
                   type="button"
                   className="w-full"
@@ -165,7 +169,7 @@ export function GenerateConfigDrawer({
                 </Button>
               </DrawerSection>
 
-              <DrawerSection index={4} className="mt-5 border-t border-border pt-5">
+              <DrawerSection className="mt-5 border-t border-border pt-5">
                 <h3 className="mb-3 text-sm font-semibold">我的模板</h3>
                 {templates.length === 0 ? (
                   <p className="text-muted-foreground text-xs">暂无模板</p>

@@ -17,7 +17,8 @@ const inputClass =
 
 type AiSettingsPanelProps = {
   className?: string;
-  variant?: "full" | "compact";
+  /** full：完整编辑；compact：首页折叠；picker：生成配置内仅选用已保存模型 */
+  variant?: "full" | "compact" | "picker";
 };
 
 export function AiSettingsPanel({
@@ -109,7 +110,7 @@ export function AiSettingsPanel({
     return (
       <div
         className={cn(
-          variant === "compact"
+          variant === "compact" || variant === "picker"
             ? "bg-card/80 min-h-14 animate-pulse rounded-xl border border-border/80 p-4"
             : "bg-card/80 min-h-[300px] animate-pulse rounded-xl border border-border/80 p-4",
           className,
@@ -118,6 +119,56 @@ export function AiSettingsPanel({
       >
         <div className="bg-muted h-4 w-32 rounded" />
       </div>
+    );
+  }
+
+  if (variant === "picker") {
+    return (
+      <section className={cn("w-full text-left", className)}>
+        <h3 className="text-sm font-semibold">AI 模型</h3>
+        <p className="text-muted-foreground mt-1 text-xs">
+          选用已保存的模型；新增或修改请回到首页配置。
+        </p>
+        {providers.length === 0 ? (
+          <p className="text-muted-foreground mt-3 text-xs">
+            暂无已保存模型，请先在首页完成 AI 配置。
+          </p>
+        ) : (
+          <ul className="mt-3 max-h-52 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
+            {providers.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className={cn(
+                    "w-full rounded-lg border px-3 py-2.5 text-left text-xs transition-colors",
+                    p.id === activeId
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:bg-muted/50",
+                  )}
+                  onClick={() => void handleSelect(p.id)}
+                >
+                  <span className="block truncate font-medium">{p.name}</span>
+                  <span className="text-muted-foreground mt-0.5 block truncate">
+                    {p.model}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <span
+          className={cn(
+            "mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+            configured
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          {configured && activeProvider
+            ? `当前：${activeProvider.name}`
+            : "演示模式"}
+        </span>
+      </section>
     );
   }
 
