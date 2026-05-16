@@ -1,0 +1,60 @@
+// 本地 SQLite，无需 PostgreSQL / MySQL 服务
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  documents   Document[]
+  templates   Template[]
+  aiProviders AiProvider[]
+  createdAt   DateTime     @default(now())
+}
+
+model AiProvider {
+  id        String   @id @default(cuid())
+  name      String
+  baseUrl   String
+  apiKey    String
+  model     String
+  isDefault Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String   @default("未命名需求文档")
+  content   String
+  isDeleted Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isDeleted])
+  @@index([title])
+}
+
+model Template {
+  id        String @id @default(cuid())
+  name      String
+  structure Json
+  fileType  String @default("md")
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

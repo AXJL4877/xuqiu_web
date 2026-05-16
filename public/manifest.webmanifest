@@ -1,0 +1,19 @@
+{
+  "name": "需求文档 · xuqiu",
+  "short_name": "xuqiu",
+  "description": "AI 辅助需求文档：生成、编辑与工作台",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#171717",
+  "lang": "zh-CN",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

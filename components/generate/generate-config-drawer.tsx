@@ -1,0 +1,249 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { PanelRightClose, PanelRightOpen } from "lucide-react";
+
+import { DrawerSection } from "@/components/generate/drawer-section";
+import { SectionEditor } from "@/components/generate/section-editor";
+import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
+import { Button } from "@/components/ui/button";
+import type { ApiTemplate } from "@/lib/generate-types";
+import type { TemplateSectionItem } from "@/lib/template-types";
+import { cn } from "@/lib/utils";
+
+type GenerateConfigDrawerProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  idea: string;
+  onIdeaChange: (v: string) => void;
+  sections: TemplateSectionItem[];
+  onToggleSection: (id: string) => void;
+  onAddSection: (title: string) => void;
+  onRemoveSection: (id: string) => void;
+  onRenameSection: (id: string, title: string) => void;
+  enabledCount: number;
+  templates: ApiTemplate[];
+  showSave: boolean;
+  onShowSaveChange: (v: boolean) => void;
+  saveName: string;
+  onSaveNameChange: (v: string) => void;
+  onSaveTemplate: () => void;
+  onApplyTemplate: (t: ApiTemplate) => void;
+  onRenameTemplate: (id: string, name: string) => void;
+  onRemoveTemplate: (id: string) => void;
+  streaming: boolean;
+  onGenerate: () => void;
+  canGenerate: boolean;
+};
+
+export function GenerateConfigDrawer({
+  open,
+  onOpenChange,
+  idea,
+  onIdeaChange,
+  sections,
+  onToggleSection,
+  onAddSection,
+  onRemoveSection,
+  onRenameSection,
+  enabledCount,
+  templates,
+  showSave,
+  onShowSaveChange,
+  saveName,
+  onSaveNameChange,
+  onSaveTemplate,
+  onApplyTemplate,
+  onRenameTemplate,
+  onRemoveTemplate,
+  streaming,
+  onGenerate,
+  canGenerate,
+}: GenerateConfigDrawerProps) {
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-1.5"
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+      >
+        {open ? (
+          <PanelRightClose className="size-4" aria-hidden />
+        ) : (
+          <PanelRightOpen className="size-4" aria-hidden />
+        )}
+        {open ? "收起配置" : "生成配置"}
+      </Button>
+
+      <AnimatePresence>
+        {open ? (
+          <>
+            <motion.button
+              type="button"
+              aria-label="关闭配置面板"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px] lg:hidden"
+              onClick={() => onOpenChange(false)}
+            />
+            <motion.aside
+              initial={{ x: "100%", opacity: 0.96 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0.96 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className={cn(
+                "bg-card fixed top-0 right-0 z-50 flex h-full w-[min(100vw,400px)] flex-col border-l border-border shadow-xl",
+                "lg:absolute lg:top-0 lg:right-0 lg:h-full lg:shadow-none",
+              )}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3"
+              >
+                <h2 className="text-sm font-semibold">生成配置</h2>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onOpenChange(false)}
+                >
+                  关闭
+                </Button>
+              </motion.div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                <DrawerSection index={0}>
+                  <AiSettingsPanel
+                    variant="full"
+                    className="border-0 bg-transparent p-0 shadow-none"
+                  />
+                </DrawerSection>
+
+                <DrawerSection index={1} className="mt-5">
+                  <label className="text-sm font-medium" htmlFor="drawer-idea">
+                    项目创意
+                  </label>
+                  <textarea
+                    id="drawer-idea"
+                    rows={4}
+                    className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring mt-2 flex min-h-[100px] w-full resize-y rounded-lg border px-3 py-2 text-sm leading-relaxed outline-none focus-visible:ring-2"
+                    placeholder="例如：做一个帮独立开发者从想法生成 PRD 的 Web 应用…"
+                    value={idea}
+                    onChange={(e) => onIdeaChange(e.target.value)}
+                  />
+                </DrawerSection>
+
+                <DrawerSection index={2} className="mt-5">
+                  <SectionEditor
+                    sections={sections}
+                    onToggle={onToggleSection}
+                    onAdd={onAddSection}
+                    onRemove={onRemoveSection}
+                    onRename={onRenameSection}
+                    enabledCount={enabledCount}
+                  />
+                </DrawerSection>
+
+                <DrawerSection index={3} className="mt-5">
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={!canGenerate || streaming}
+                    onClick={onGenerate}
+                  >
+                    {streaming ? "生成中…" : "开始生成"}
+                  </Button>
+                </DrawerSection>
+
+                <DrawerSection index={4} className="mt-5 border-t border-border pt-5">
+                  <h3 className="mb-3 text-sm font-semibold">我的模板</h3>
+                  {templates.length === 0 ? (
+                    <p className="text-muted-foreground text-xs">暂无模板</p>
+                  ) : (
+                    <ul className="max-h-48 space-y-2 overflow-y-auto">
+                      {templates.map((t) => (
+                        <li
+                          key={t.id}
+                          className="bg-muted/40 rounded-lg border border-border/80 p-2.5"
+                        >
+                          <p className="truncate text-sm font-medium">{t.name}</p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="outline"
+                              onClick={() => onRenameTemplate(t.id, t.name)}
+                            >
+                              改名
+                            </Button>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="secondary"
+                              onClick={() => onApplyTemplate(t)}
+                            >
+                              应用
+                            </Button>
+                            <Button
+                              type="button"
+                              size="xs"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => onRemoveTemplate(t.id)}
+                            >
+                              删除
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {showSave ? (
+                    <div className="mt-3 space-y-2">
+                      <input
+                        className="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
+                        value={saveName}
+                        onChange={(e) => onSaveNameChange(e.target.value)}
+                        placeholder="模板名称"
+                      />
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" onClick={onSaveTemplate}>
+                          保存
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onShowSaveChange(false)}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 w-full"
+                      onClick={() => onShowSaveChange(true)}
+                    >
+                      保存当前板块为模板
+                    </Button>
+                  )}
+                </DrawerSection>
+              </div>
+            </motion.aside>
+          </>
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
