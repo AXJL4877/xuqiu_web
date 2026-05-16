@@ -128,3 +128,47 @@
     @apply font-sans;
   }
 }
+
+/* 页面缓入（CSS 保证首屏可见，不依赖 Framer 挂载时机） */
+@keyframes fade-up-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-up {
+    animation: fade-up-in 0.55s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.35s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-from-right 0.36s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+}

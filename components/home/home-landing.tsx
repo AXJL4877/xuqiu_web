@@ -1,12 +1,10 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
 import { buttonVariants } from "@/components/ui/button";
-import { fadeUp, staggerContainer } from "@/lib/motion-presets";
+import { fadeUpDelay } from "@/lib/motion-presets";
 import { cn } from "@/lib/utils";
 
 const features = [
@@ -25,85 +23,43 @@ const features = [
 ];
 
 export function HomeLanding() {
-  const reduceMotion = useReducedMotion();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
-  const motionProps =
-    reduceMotion || !ready
-      ? { initial: false as const }
-      : { initial: "hidden" as const, animate: "visible" as const };
-
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden">
-      <motion.div
+      <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        initial={reduceMotion ? false : { opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="pointer-events-none absolute inset-0 -z-10 animate-fade-in"
       >
-        <motion.div
-          className="absolute top-[-20%] left-1/2 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-primary/[0.04] blur-3xl"
-          animate={
-            reduceMotion
-              ? undefined
-              : { scale: [1, 1.04, 1], opacity: [0.45, 0.65, 0.45] }
-          }
-          transition={
-            reduceMotion
-              ? undefined
-              : { duration: 12, repeat: Infinity, ease: "easeInOut" }
-          }
-        />
-        <motion.div
-          className="absolute right-[-10%] bottom-[-10%] h-[360px] w-[360px] rounded-full bg-muted/60 blur-3xl"
-          animate={
-            reduceMotion ? undefined : { x: [0, -8, 0], y: [0, 6, 0] }
-          }
-          transition={
-            reduceMotion
-              ? undefined
-              : { duration: 14, repeat: Infinity, ease: "easeInOut" }
-          }
-        />
-      </motion.div>
+        <div className="absolute top-[-20%] left-1/2 h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-primary/[0.04] blur-3xl" />
+        <div className="absolute right-[-10%] bottom-[-10%] h-[360px] w-[360px] rounded-full bg-muted/60 blur-3xl" />
+      </div>
 
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-10 px-6 py-16 text-center sm:gap-12 sm:py-24">
-        <motion.div
-          className="flex w-full max-w-3xl flex-col items-center gap-10 sm:gap-12"
-          variants={staggerContainer}
-          {...motionProps}
-        >
+        <div className="flex w-full max-w-3xl flex-col items-center gap-10 sm:gap-12">
           <div className="space-y-5">
-            <motion.p
-              variants={fadeUp}
-              className="text-muted-foreground text-xs font-medium tracking-[0.2em] uppercase"
+            <p
+              className="text-muted-foreground animate-fade-up text-xs font-medium tracking-[0.2em] uppercase"
+              style={{ animationDelay: fadeUpDelay(0) }}
             >
               AI 辅助需求文档
-            </motion.p>
-            <motion.h1
-              variants={fadeUp}
-              className="text-foreground text-4xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-[1.15]"
+            </p>
+            <h1
+              className="text-foreground animate-fade-up text-4xl font-semibold tracking-tight text-balance sm:text-5xl sm:leading-[1.15]"
+              style={{ animationDelay: fadeUpDelay(1) }}
             >
               把创意写成
               <span className="text-primary/90"> 可落地的 PRD</span>
-            </motion.h1>
-            <motion.p
-              variants={fadeUp}
-              className="text-muted-foreground mx-auto max-w-lg text-base leading-relaxed text-pretty sm:text-lg"
+            </h1>
+            <p
+              className="text-muted-foreground animate-fade-up mx-auto max-w-lg text-base leading-relaxed text-pretty sm:text-lg"
+              style={{ animationDelay: fadeUpDelay(2) }}
             >
               降低起草门槛，统一文档结构。从想法到结构化初稿，再到预览微调与导出，一站完成。
-            </motion.p>
+            </p>
           </div>
 
-          <motion.div
-            variants={fadeUp}
-            className="flex flex-wrap items-center justify-center gap-3"
+          <div
+            className="animate-fade-up flex flex-wrap items-center justify-center gap-3"
+            style={{ animationDelay: fadeUpDelay(3) }}
           >
             <Link
               href="/generate?fresh=1"
@@ -123,11 +79,11 @@ export function HomeLanding() {
             >
               新建文档
             </Link>
-          </motion.div>
+          </div>
 
-          <motion.ul
-            variants={fadeUp}
-            className="grid w-full max-w-2xl gap-4 text-left sm:grid-cols-3"
+          <ul
+            className="animate-fade-up grid w-full max-w-2xl gap-4 text-left sm:grid-cols-3"
+            style={{ animationDelay: fadeUpDelay(4) }}
           >
             {features.map((f) => (
               <li
@@ -140,12 +96,15 @@ export function HomeLanding() {
                 </p>
               </li>
             ))}
-          </motion.ul>
+          </ul>
 
-          <motion.div variants={fadeUp} className="w-full max-w-2xl">
+          <div
+            className="animate-fade-up w-full max-w-2xl"
+            style={{ animationDelay: fadeUpDelay(5) }}
+          >
             <AiSettingsPanel className="max-w-2xl" variant="full" />
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </section>
     </main>
   );

@@ -299,7 +299,7 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
   };
 
   return (
-    <div className="relative flex min-h-[calc(100dvh-0px)] flex-1 flex-col">
+    <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden">
       <header className="bg-background flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-start gap-2 sm:gap-3">
           <BackToHome className="mt-0.5 shrink-0" />
@@ -384,12 +384,7 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
         </p>
       ) : null}
 
-      <main
-        className={cn(
-          "flex min-h-0 flex-1 flex-col p-3 transition-[padding] sm:p-4",
-          configOpen && "lg:pr-[min(100vw,400px)]",
-        )}
-      >
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
         <div className="bg-card relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border shadow-sm">
           <div className="text-muted-foreground flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 text-xs">
             <span className="font-medium text-foreground">文档预览</span>
