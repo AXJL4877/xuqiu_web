@@ -186,6 +186,42 @@
   }
 }
 
+/* 生成配置抽屉：常驻 DOM + CSS transition（不依赖 Framer / 挂载时机） */
+.generate-drawer-root {
+  pointer-events: none;
+}
+
+.generate-drawer-root[data-open="true"] {
+  pointer-events: auto;
+}
+
+.generate-drawer-backdrop {
+  opacity: 0;
+}
+
+.generate-drawer-root[data-open="true"] .generate-drawer-backdrop {
+  opacity: 1;
+}
+
+.generate-drawer-panel {
+  transform: translate3d(100%, 0, 0);
+  will-change: transform;
+}
+
+.generate-drawer-root[data-open="true"] .generate-drawer-panel {
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .generate-drawer-backdrop {
+    transition: opacity 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .generate-drawer-panel {
+    transition: transform 0.36s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+}
+
 /* 首页固定视口高度，避免整页滚动条 */
 html:has(.page-home),
 html:has(.page-home) body {
