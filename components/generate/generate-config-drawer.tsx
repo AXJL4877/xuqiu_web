@@ -88,18 +88,14 @@ export function GenerateConfigDrawer({
   const drawerLayer = mounted ? (
     <AnimatePresence>
       {open ? (
-        <motion.div
+        <div
           key="generate-config-drawer"
           className="fixed inset-0 z-50 flex justify-end"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
         >
           <button
             type="button"
             aria-label="关闭配置面板"
-            className="absolute inset-0 bg-black/25 backdrop-blur-[1px] lg:bg-black/10"
+            className="drawer-backdrop-in absolute inset-0 bg-black/30"
             onClick={() => onOpenChange(false)}
           />
           <motion.aside
@@ -107,7 +103,10 @@ export function GenerateConfigDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={drawerPanelTransition}
-            className="bg-card relative z-10 flex h-dvh max-h-dvh w-[min(100vw,400px)] flex-col border-l border-border shadow-xl"
+            className={cn(
+              "bg-card relative z-10 flex h-dvh max-h-dvh w-[min(100vw,400px)] flex-col border-l border-border shadow-xl",
+            )}
+            style={{ willChange: "transform" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
@@ -123,14 +122,14 @@ export function GenerateConfigDrawer({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-              <DrawerSection>
+              <DrawerSection index={0}>
                 <AiSettingsPanel
                   variant="full"
                   className="border-0 bg-transparent p-0 shadow-none"
                 />
               </DrawerSection>
 
-              <DrawerSection className="mt-5">
+              <DrawerSection index={1} className="mt-5">
                 <label className="text-sm font-medium" htmlFor="drawer-idea">
                   项目创意
                 </label>
@@ -144,7 +143,7 @@ export function GenerateConfigDrawer({
                 />
               </DrawerSection>
 
-              <DrawerSection className="mt-5">
+              <DrawerSection index={2} className="mt-5">
                 <SectionEditor
                   sections={sections}
                   onToggle={onToggleSection}
@@ -155,7 +154,7 @@ export function GenerateConfigDrawer({
                 />
               </DrawerSection>
 
-              <DrawerSection className="mt-5">
+              <DrawerSection index={3} className="mt-5">
                 <Button
                   type="button"
                   className="w-full"
@@ -166,7 +165,7 @@ export function GenerateConfigDrawer({
                 </Button>
               </DrawerSection>
 
-              <DrawerSection className="mt-5 border-t border-border pt-5">
+              <DrawerSection index={4} className="mt-5 border-t border-border pt-5">
                 <h3 className="mb-3 text-sm font-semibold">我的模板</h3>
                 {templates.length === 0 ? (
                   <p className="text-muted-foreground text-xs">暂无模板</p>
@@ -245,7 +244,7 @@ export function GenerateConfigDrawer({
               </DrawerSection>
             </div>
           </motion.aside>
-        </motion.div>
+        </div>
       ) : null}
     </AnimatePresence>
   ) : null;

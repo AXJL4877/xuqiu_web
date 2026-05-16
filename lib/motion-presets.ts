@@ -23,5 +23,9 @@ export const drawerPanelTransition = {
   ease: EASE_OUT,
 } as const;
 
-/** 子元素依次缓入的 delay（秒） */
-export const fadeUpDelay = (index: number) => `${0.06 + index * 0.09}s`;
+/** 首页子元素依次缓入的 delay（秒） */
+export const fadeUpDelay = (index: number) => `${0.05 + index * 0.07}s`;
+
+/** 抽屉内区块缓入 delay（秒） */
+export const drawerSectionDelay = (index: number) =>
+  `${0.1 + index * 0.05}s`;

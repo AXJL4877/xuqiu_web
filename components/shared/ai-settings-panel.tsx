@@ -109,7 +109,9 @@ export function AiSettingsPanel({
     return (
       <div
         className={cn(
-          "bg-card/80 min-h-[300px] animate-pulse rounded-xl border border-border/80 p-4",
+          variant === "compact"
+            ? "bg-card/80 min-h-14 animate-pulse rounded-xl border border-border/80 p-4"
+            : "bg-card/80 min-h-[300px] animate-pulse rounded-xl border border-border/80 p-4",
           className,
         )}
         aria-hidden

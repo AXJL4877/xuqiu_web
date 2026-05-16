@@ -171,4 +171,24 @@
   .animate-slide-in-right {
     animation: slide-in-from-right 0.36s cubic-bezier(0.25, 0.1, 0.25, 1) both;
   }
+
+  .drawer-backdrop-in {
+    animation: fade-in 0.22s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+
+  .drawer-panel-in {
+    animation: slide-in-from-right 0.38s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+    will-change: transform;
+  }
+
+  .drawer-section-in {
+    animation: fade-up-in 0.42s cubic-bezier(0.25, 0.1, 0.25, 1) both;
+  }
+}
+
+/* 首页固定视口高度，避免整页滚动条 */
+html:has(.page-home),
+html:has(.page-home) body {
+  overflow: hidden;
+  height: 100%;
 }
