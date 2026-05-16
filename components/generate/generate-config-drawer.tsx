@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -11,8 +11,9 @@ import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
 import { Button } from "@/components/ui/button";
 import type { ApiTemplate } from "@/lib/generate-types";
 import {
-  drawerBackdropTransition,
-  drawerPanelTransition,
+  generateDrawerBackdropVariants,
+  generateDrawerPanelVariants,
+  generateDrawerRootVariants,
 } from "@/lib/motion-presets";
 import type { TemplateSectionItem } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
@@ -83,33 +84,38 @@ export function GenerateConfigDrawer({
   canGenerate,
 }: GenerateConfigDrawerProps) {
   const [mounted, setMounted] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => setMounted(true), []);
 
   useBodyScrollLock(open);
 
+  const drawerMotion = reduceMotion
+    ? { initial: false as const, animate: undefined, exit: undefined }
+    : {
+        initial: "hidden" as const,
+        animate: "visible" as const,
+        exit: "exit" as const,
+      };
+
   const drawerLayer = mounted ? (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {open ? (
-        <div
+        <motion.div
           key="generate-config-drawer"
           className="fixed inset-0 z-50 flex justify-end"
+          variants={reduceMotion ? undefined : generateDrawerRootVariants}
+          {...drawerMotion}
         >
           <motion.button
             type="button"
             aria-label="关闭配置面板"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={drawerBackdropTransition}
+            variants={reduceMotion ? undefined : generateDrawerBackdropVariants}
             className="absolute inset-0 bg-black/30"
             onClick={() => onOpenChange(false)}
           />
           <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={drawerPanelTransition}
+            variants={reduceMotion ? undefined : generateDrawerPanelVariants}
             className={cn(
               "bg-card relative z-10 flex h-dvh max-h-dvh w-[min(100vw,400px)] flex-col border-l border-border shadow-xl",
             )}
@@ -248,7 +254,7 @@ export function GenerateConfigDrawer({
               </DrawerSection>
             </div>
           </motion.aside>
-        </div>
+        </motion.div>
       ) : null}
     </AnimatePresence>
   ) : null;

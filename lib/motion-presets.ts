@@ -1,4 +1,6 @@
-/** 页面缓入动画共用曲线 */
+import type { Transition, Variants } from "framer-motion";
+
+/** 页面缓入动画共用曲线（cubic-bezier） */
 export const EASE_OUT = [0.25, 0.1, 0.25, 1] as const;
 
 export const fadeUp = {
@@ -18,14 +20,43 @@ export const staggerContainer = {
   },
 };
 
-/** 生成配置抽屉：面板与遮罩共用时长与曲线，避免与内容缓入错位 */
-export const drawerPanelTransition = {
+/** 生成配置抽屉：面板滑入/遮罩淡入共用缓动 */
+export const drawerPanelTransition: Transition = {
   type: "tween",
-  duration: 0.3,
-  ease: [0.32, 0.72, 0, 1],
-} as const;
+  duration: 0.36,
+  ease: EASE_OUT,
+};
 
-export const drawerBackdropTransition = drawerPanelTransition;
+export const drawerBackdropTransition: Transition = {
+  type: "tween",
+  duration: 0.28,
+  ease: EASE_OUT,
+};
+
+/** 生成配置抽屉 AnimatePresence 根节点与子元素 variants */
+export const generateDrawerRootVariants: Variants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: { when: "beforeChildren", staggerChildren: 0.04 },
+  },
+  exit: {
+    opacity: 1,
+    transition: { when: "afterChildren", staggerChildren: 0.03, staggerDirection: -1 },
+  },
+};
+
+export const generateDrawerBackdropVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: drawerBackdropTransition },
+  exit: { opacity: 0, transition: drawerBackdropTransition },
+};
+
+export const generateDrawerPanelVariants: Variants = {
+  hidden: { x: "100%" },
+  visible: { x: 0, transition: drawerPanelTransition },
+  exit: { x: "100%", transition: drawerPanelTransition },
+};
 
 /** 首页子元素依次缓入的 delay（秒） */
 export const fadeUpDelay = (index: number) => `${0.05 + index * 0.07}s`;
