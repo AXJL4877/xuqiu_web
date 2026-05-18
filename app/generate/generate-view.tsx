@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import { GenerateConfigDrawer } from "@/components/generate/generate-config-drawer";
+import { InquiryFlowView } from "@/components/inquiry/inquiry-flow-view";
 import { SelectionAiAssistant } from "@/components/generate/selection-ai-assistant";
 import { BackToHome } from "@/components/shared/back-to-home";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,18 @@ import {
   updateSectionTitle,
   type TemplateSectionItem,
 } from "@/lib/template-types";
+import {
+  fetchActiveInquirySession,
+  linkInquirySessionDocument,
+} from "@/lib/inquiry/session-sync-client";
+import {
+  clearInquiryClearedFlag,
+  clearInquirySession,
+  loadInquirySession,
+  saveInquirySession,
+  wasInquiryExplicitlyCleared,
+} from "@/lib/inquiry/session-storage";
+import type { InquiryGeneratePayload } from "@/lib/inquiry/types";
 import { cn } from "@/lib/utils";
 
 type GenerateViewProps = {
@@ -76,26 +89,59 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
   const [saveName, setSaveName] = useState("");
   const [showSave, setShowSave] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [inquirySessionId, setInquirySessionId] = useState<string | null>(null);
   const previewRef = useRef<HTMLTextAreaElement>(null);
   const previewLockedRef = useRef(false);
 
   useEffect(() => {
-    if (searchParams.get("fresh") !== "1") return;
-    try {
-      localStorage.removeItem("xuqiu-generate-preview");
-    } catch {
-      /* ignore */
+    if (searchParams.get("fresh") === "1") {
+      clearInquirySession();
+      clearInquiryClearedFlag();
+      try {
+        localStorage.removeItem("xuqiu-generate-preview");
+      } catch {
+        /* ignore */
+      }
+      resetGenerateFormState(
+        setIdea,
+        setSections,
+        setPreview,
+        setPreviewDirty,
+        setStreamMode,
+        setError,
+        previewLockedRef,
+      );
+      router.replace("/generate");
+      return;
     }
-    resetGenerateFormState(
-      setIdea,
-      setSections,
-      setPreview,
-      setPreviewDirty,
-      setStreamMode,
-      setError,
-      previewLockedRef,
-    );
-    router.replace("/generate");
+
+    if (wasInquiryExplicitlyCleared()) return;
+
+    void (async () => {
+      const local = loadInquirySession();
+      const remote = await fetchActiveInquirySession();
+      let saved = local;
+      if (remote && local) {
+        const remoteTs = new Date(
+          remote.serverUpdatedAt ?? remote.session.updatedAt,
+        ).getTime();
+        const localTs = new Date(local.session.updatedAt).getTime();
+        saved = remoteTs >= localTs ? remote : local;
+        if (remoteTs > localTs) saveInquirySession(remote);
+      } else if (remote) {
+        saved = remote;
+        saveInquirySession(remote);
+      }
+      if (!saved) return;
+
+      setIdea(saved.session.idea);
+      setSections(saved.session.sections.map((s) => ({ ...s })));
+      setInquirySessionId(saved.session.sessionId);
+      if (saved.inquiryOpen !== false) {
+        setInquiryOpen(true);
+      }
+    })();
   }, [searchParams, router]);
 
   const loadTemplates = useCallback(async () => {
@@ -130,7 +176,28 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
 
   const canGenerate = Boolean(idea.trim() && enabledCount > 0);
 
-  const runGenerate = async () => {
+  const startInquiry = () => {
+    if (!canGenerate) return;
+    clearInquiryClearedFlag();
+    setError(null);
+    setConfigOpen(false);
+    setInquiryOpen(true);
+  };
+
+  const handleInquiryCleared = () => {
+    setInquiryOpen(false);
+  };
+
+  const handleInquiryComplete = (payload: InquiryGeneratePayload) => {
+    setInquirySessionId(payload.inquirySessionId ?? null);
+    clearInquirySession();
+    void runGenerate(payload);
+  };
+
+  const runGenerate = async (inquiryPayload?: InquiryGeneratePayload) => {
+    const ideaForGen = (inquiryPayload?.idea ?? idea).trim();
+    if (!ideaForGen || enabledCount === 0) return;
+
     setError(null);
     setPreview("");
     setPreviewDirty(false);
@@ -138,13 +205,28 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
     setStreamMode("idle");
     setStreaming(true);
     setConfigOpen(false);
+    setInquiryOpen(false);
 
     try {
       const body: {
         idea: string;
         sections: TemplateSectionItem[];
+        inquirySessionId?: string;
+        notebook?: InquiryGeneratePayload["notebook"];
+        acceptedAssumptions?: InquiryGeneratePayload["acceptedAssumptions"];
+        gaps?: InquiryGeneratePayload["gaps"];
+        completionStrategy?: InquiryGeneratePayload["completionStrategy"];
         ai?: typeof aiSettings;
-      } = { idea, sections };
+      } = { idea: ideaForGen, sections };
+      if (inquiryPayload) {
+        body.notebook = inquiryPayload.notebook;
+        body.acceptedAssumptions = inquiryPayload.acceptedAssumptions;
+        body.gaps = inquiryPayload.gaps;
+        body.completionStrategy = inquiryPayload.completionStrategy;
+        if (inquiryPayload.inquirySessionId) {
+          body.inquirySessionId = inquiryPayload.inquirySessionId;
+        }
+      }
       if (aiHydrated && isAiSettingsConfigured(aiSettings)) {
         body.ai = aiSettings;
       }
@@ -272,6 +354,9 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
         return;
       }
       const data = (await res.json()) as { document: { id: string } };
+      if (inquirySessionId) {
+        void linkInquirySessionDocument(inquirySessionId, data.document.id);
+      }
       router.push(`/editor/${data.document.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "归档失败");
@@ -343,16 +428,16 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
             onRenameTemplate={(id, name) => void renameTemplate(id, name)}
             onRemoveTemplate={(id) => void removeTemplate(id)}
             streaming={streaming}
-            onGenerate={() => void runGenerate()}
+            onGenerate={startInquiry}
             canGenerate={canGenerate}
           />
           <Button
             type="button"
-            disabled={!canGenerate || streaming}
-            onClick={() => void runGenerate()}
+            disabled={!canGenerate || streaming || inquiryOpen}
+            onClick={startInquiry}
             className="hidden sm:inline-flex"
           >
-            {streaming ? "生成中…" : "开始生成"}
+            {streaming ? "生成中…" : "开始询问"}
           </Button>
           <Button
             type="button"
@@ -394,7 +479,7 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
               ) : preview.trim() ? (
                 <span>划词可选用 AI 助手</span>
               ) : (
-                <span>填写创意后开始生成</span>
+                <span>填写创意后开始询问</span>
               )}
             </span>
           </div>
@@ -406,7 +491,7 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
             placeholder={
               streaming
                 ? "正在生成 PRD 正文，内容将实时显示…"
-                : "点击「生成配置」填写创意与板块，开始生成。生成后可划词解释专业名词、扩写或专业化改写。"
+                : "点击「生成配置」填写创意与板块，开始询问收集需求。确认后生成 PRD，生成后可划词辅助编辑。"
             }
             className={cn(
               "min-h-0 flex-1 w-full resize-none border-0 bg-transparent px-4 py-4 font-mono text-sm leading-relaxed outline-none sm:px-6 sm:text-[15px] sm:leading-7",
@@ -427,6 +512,19 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
           />
         </div>
       </main>
+
+      <InquiryFlowView
+        open={inquiryOpen}
+        idea={idea}
+        sections={sections}
+        onClose={() => setInquiryOpen(false)}
+        onCleared={handleInquiryCleared}
+        onCompleteGenerate={handleInquiryComplete}
+        generating={streaming}
+        aiSettings={aiSettings}
+        aiConfigured={aiConfigured}
+        providerId={activeProvider?.id ?? null}
+      />
     </div>
   );
 }

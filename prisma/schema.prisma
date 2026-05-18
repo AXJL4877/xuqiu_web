@@ -10,12 +10,13 @@ datasource db {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  documents   Document[]
-  templates   Template[]
-  aiProviders AiProvider[]
-  createdAt   DateTime     @default(now())
+  id              String           @id @default(cuid())
+  email           String           @unique
+  documents       Document[]
+  templates       Template[]
+  aiProviders     AiProvider[]
+  inquirySessions InquirySession[]
+  createdAt       DateTime         @default(now())
 }
 
 model AiProvider {
@@ -35,17 +36,42 @@ model AiProvider {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  title     String   @default("未命名需求文档")
-  content   String
-  isDeleted Boolean  @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String           @id @default(cuid())
+  title           String           @default("未命名需求文档")
+  content         String
+  isDeleted       Boolean          @default(false)
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inquirySessions InquirySession[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([userId, isDeleted])
   @@index([title])
+}
+
+/// 询问式生成会话：笔记板、问答历史、确认假设等
+model InquirySession {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idea            String
+  sections        Json
+  notebook        Json
+  messages        Json      @default("[]")
+  phase           String    @default("collecting")
+  status          String    @default("collecting")
+  sessionMeta     Json
+  assumptions     Json?
+  pendingQuestion Json?
+  pendingForQuestionId String?
+  documentId      String?
+  document        Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, updatedAt])
+  @@index([userId, status])
 }
 
 model Template {

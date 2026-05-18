@@ -159,7 +159,7 @@ export function GenerateConfigDrawer({
               tabIndex={open ? 0 : -1}
               onClick={onGenerate}
             >
-              {streaming ? "生成中…" : "开始生成"}
+              {streaming ? "生成中…" : "开始询问"}
             </Button>
           </DrawerSection>
 

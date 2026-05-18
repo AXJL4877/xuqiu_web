@@ -36,10 +36,13 @@ export function buildPrdSystemPrompt(
   ].join("\n");
 }
 
-export function buildPrdUserPrompt(idea: string): string {
+export function buildPrdUserPrompt(ideaOrFullPrompt: string): string {
+  if (ideaOrFullPrompt.includes("【需求笔记板全文")) {
+    return ideaOrFullPrompt;
+  }
   return [
     "项目创意：",
-    idea.trim(),
+    ideaOrFullPrompt.trim(),
     "",
     "请直接输出 PRD 正文。使用 # / ## / ### 组织标题，分条仅用 `-`，不要用 1.2.3. 序号。不要输出文档以外的任何内容。",
   ].join("\n");

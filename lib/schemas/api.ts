@@ -7,6 +7,58 @@ import {
   templateSectionItemSchema,
 } from "@/lib/template-types";
 
+const notebookSourceSchema = z.object({
+  type: z.enum(["question", "user_edit"]),
+  ref: z.string().max(32).optional(),
+  at: z.string(),
+});
+
+const notebookEntrySchema = z.object({
+  sectionId: z.string(),
+  sectionTitle: z.string(),
+  content: z.string().max(50_000),
+  sources: z.array(notebookSourceSchema),
+  updatedAt: z.string(),
+});
+
+export const inquiryNotebookSchema = z.object({
+  entries: z.array(notebookEntrySchema),
+});
+
+const inquiryAnswerSchema = z.object({
+  questionId: z.string().min(1).max(120),
+  sectionId: z.string().min(1).max(120),
+  selectedOptionIds: z.array(z.string().max(64)).optional(),
+  customText: z.string().max(4000).optional(),
+  text: z.string().max(4000).optional(),
+  resolvedText: z.string().max(4000).optional(),
+  skipped: z.boolean().optional(),
+});
+
+const inquirySessionMetaSchema = z.object({
+  sessionId: z.string().max(80),
+  idea: z.string().max(8000),
+  sections: z.array(templateSectionItemSchema),
+  questionCount: z.number().int().min(0),
+  sectionAskCounts: z.record(z.string(), z.number().int().min(0)).optional(),
+  sectionLastStems: z.record(z.string(), z.string().max(300)).optional(),
+  startedAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const inquiryNextBodySchema = z.object({
+  action: z.enum(["start", "answer", "skip", "sync_notebook"]),
+  sessionId: z.string().max(80).optional(),
+  idea: z.string().min(1).max(8000),
+  sections: z.array(templateSectionItemSchema).min(1),
+  notebook: inquiryNotebookSchema,
+  session: inquirySessionMetaSchema.optional(),
+  answer: inquiryAnswerSchema.optional(),
+  questionId: z.string().max(120).optional(),
+  providerId: z.string().min(1).max(64).optional(),
+  ai: aiSettingsSchema.optional(),
+});
+
 export const selectionActionSchema = z.enum([
   "professional",
   "expand",
@@ -31,9 +83,67 @@ export const selectionBodySchema = z
     { message: "自定义修改须填写指令", path: ["customPrompt"] },
   )
 
+const inquiryAssumptionSchema = z.object({
+  id: z.string().min(1).max(80),
+  sectionId: z.string().min(1).max(120),
+  sectionTitle: z.string().max(100),
+  text: z.string().min(1).max(2000),
+});
+
+const inquiryGapSchema = z.object({
+  sectionId: z.string().min(1).max(120),
+  sectionTitle: z.string().max(100),
+  reason: z.string().max(500),
+});
+
+export const inquirySessionSyncBodySchema = z.object({
+  version: z.literal(1),
+  session: inquirySessionMetaSchema,
+  notebook: inquiryNotebookSchema,
+  phase: z.enum(["collecting", "confirming"]),
+  inquiryOpen: z.boolean(),
+});
+
+export const inquirySessionPatchBodySchema = z.object({
+  documentId: z.string().min(1).max(80).optional(),
+  status: z.enum(["collecting", "confirming", "generated", "abandoned"]).optional(),
+  assumptions: z.array(inquiryAssumptionSchema).optional(),
+});
+
+export const inquiryExplainBodySchema = z.object({
+  term: z.string().min(1).max(200),
+  idea: z.string().max(8000).optional(),
+  questionStem: z.string().max(2000).optional(),
+  questionWhy: z.string().max(1000).optional(),
+  sectionTitle: z.string().max(100).optional(),
+  options: z.array(z.string().max(500)).max(20).optional(),
+  providerId: z.string().min(1).max(64).optional(),
+  ai: aiSettingsSchema.optional(),
+});
+
+export const inquiryFinishBodySchema = z.object({
+  idea: z.string().min(1).max(8000),
+  sections: z.array(templateSectionItemSchema).min(1),
+  notebook: inquiryNotebookSchema,
+  session: inquirySessionMetaSchema.optional(),
+  providerId: z.string().min(1).max(64).optional(),
+  ai: aiSettingsSchema.optional(),
+});
+
+export const completionStrategySchema = z.enum([
+  "conservative",
+  "standard",
+  "aggressive",
+]);
+
 export const generateBodySchema = z.object({
   idea: z.string().min(1).max(8000),
   sections: z.array(templateSectionItemSchema).min(1),
+  inquirySessionId: z.string().min(1).max(80).optional(),
+  notebook: inquiryNotebookSchema.optional(),
+  acceptedAssumptions: z.array(inquiryAssumptionSchema).optional(),
+  gaps: z.array(inquiryGapSchema).optional(),
+  completionStrategy: completionStrategySchema.optional(),
   ai: aiSettingsSchema.optional(),
 });
 
