@@ -46,6 +46,17 @@ export function AiSettingsPanel({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (variant !== "compact") return;
+    const root = document.documentElement;
+    if (expanded) {
+      root.classList.add("home-ai-config-expanded");
+    } else {
+      root.classList.remove("home-ai-config-expanded");
+    }
+    return () => root.classList.remove("home-ai-config-expanded");
+  }, [expanded, variant]);
+
+  useEffect(() => {
     if (!hydrated) return;
     if (activeProvider) {
       setDraft({
@@ -225,6 +236,9 @@ export function AiSettingsPanel({
     <section
       className={cn(
         "bg-card/80 w-full rounded-xl border border-border/80 p-5 text-left backdrop-blur-sm",
+        variant === "compact" &&
+          expanded &&
+          "home-ai-config-scroll max-h-[min(78dvh,720px)] overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]",
         className,
       )}
     >

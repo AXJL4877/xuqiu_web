@@ -112,10 +112,10 @@ export function InquiryFlowView({
     (base: Record<string, unknown>) => {
       const body = { ...base };
       if (session) body.session = session;
+      if (providerId) body.providerId = providerId;
       if (aiConfigured && isAiSettingsConfigured(aiSettings)) {
         body.ai = aiSettings;
       }
-      if (providerId) body.providerId = providerId;
       return body;
     },
     [aiSettings, aiConfigured, providerId, session],
@@ -426,9 +426,11 @@ export function InquiryFlowView({
           <h1 className="text-base font-semibold sm:text-lg">需求询问</h1>
           <p className="text-muted-foreground text-xs sm:text-sm">
             {phase === "collecting"
-              ? inquiryMode === "live"
-                ? "AI 根据你的创意与笔记板缺口逐轮提问"
-                : "演示模式 · 在设置中配置 API 后可智能追问"
+              ? aiConfigured
+                ? inquiryMode === "live"
+                  ? "AI 根据你的创意与笔记板缺口逐轮提问"
+                  : "已配置 AI · 当前为备用题目（网络或服务异常时可重试）"
+                : "演示模式 · 在首页配置 API 后可智能追问"
               : "确认后将生成 PRD 初稿"}
           </p>
         </div>

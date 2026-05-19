@@ -242,3 +242,23 @@ html:has(.page-home) body {
   overflow: hidden;
   height: 100%;
 }
+
+/* iPad 等：展开 AI 配置时允许页面滚动，避免「卡死」 */
+html.home-ai-config-expanded,
+html.home-ai-config-expanded body {
+  overflow: auto !important;
+  height: auto;
+  min-height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.home-ai-config-expanded .page-home {
+  overflow: auto !important;
+  height: auto !important;
+  min-height: 100dvh;
+}
+
+html.home-ai-config-expanded .page-home main {
+  overflow: visible !important;
+  height: auto !important;
+}

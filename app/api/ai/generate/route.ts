@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     acceptedAssumptions,
     gaps,
     completionStrategy,
+    providerId,
     ai: aiInput,
   } = parsed.data;
   const enabled = sections.filter((s) => s.enabled);
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const ai = await resolveAiConfigForRequest(aiInput);
+  const ai = await resolveAiConfigForRequest(aiInput, providerId);
 
   const hasInquiryNotebook =
     notebook != null && notebook.entries.length > 0;
@@ -77,6 +78,15 @@ export async function POST(req: Request) {
       : buildPrdUserPrompt(idea);
 
   if (!ai) {
+    if (hasInquiryNotebook) {
+      return Response.json(
+        {
+          error:
+            "未检测到可用的 AI 配置，无法根据询问结果生成 PRD。请在首页保存模型配置后重试。",
+        },
+        { status: 503 },
+      );
+    }
     return demoPrdStreamResponse(userPrompt, sections);
   }
 

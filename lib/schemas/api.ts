@@ -144,6 +144,7 @@ export const generateBodySchema = z.object({
   acceptedAssumptions: z.array(inquiryAssumptionSchema).optional(),
   gaps: z.array(inquiryGapSchema).optional(),
   completionStrategy: completionStrategySchema.optional(),
+  providerId: z.string().min(1).max(64).optional(),
   ai: aiSettingsSchema.optional(),
 });
 

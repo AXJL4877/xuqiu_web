@@ -145,7 +145,7 @@ async function nextQuestionResponse(
     question,
     notebook,
     session: withQuestionStem(session, question),
-    mode: "demo",
+    mode: ai ? "live" : "demo",
   };
 }
 

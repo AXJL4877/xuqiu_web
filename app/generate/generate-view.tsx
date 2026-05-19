@@ -216,6 +216,7 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
         acceptedAssumptions?: InquiryGeneratePayload["acceptedAssumptions"];
         gaps?: InquiryGeneratePayload["gaps"];
         completionStrategy?: InquiryGeneratePayload["completionStrategy"];
+        providerId?: string;
         ai?: typeof aiSettings;
       } = { idea: ideaForGen, sections };
       if (inquiryPayload) {
@@ -226,6 +227,9 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
         if (inquiryPayload.inquirySessionId) {
           body.inquirySessionId = inquiryPayload.inquirySessionId;
         }
+      }
+      if (activeProvider?.id) {
+        body.providerId = activeProvider.id;
       }
       if (aiHydrated && isAiSettingsConfigured(aiSettings)) {
         body.ai = aiSettings;

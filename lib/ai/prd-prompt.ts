@@ -15,7 +15,8 @@ export function buildPrdSystemPrompt(
     "3. 禁止总结用户输入、禁止列出「用户要求：…」、禁止解释你将如何写文档。",
     "4. 禁止输出 Markdown 代码围栏（```）包裹全文。",
     "5. 仅使用中文撰写正文；语气专业、简洁、可落地；避免空话套话。",
-    "6. 未启用的板块不得出现；板块顺序必须与下列列表一致。",
+    "6. 输入中的笔记板/问答记录仅供理解，须改写为正式 PRD 表述，禁止整段复制粘贴用户原话。",
+    "7. 未启用的板块不得出现；板块顺序必须与下列列表一致。",
     "",
     "【Markdown 标题层级（严格遵守）】",
     "- 可选：文首一行 `# 项目名称`（从创意提炼，仅一行）。",
@@ -38,7 +39,11 @@ export function buildPrdSystemPrompt(
 
 export function buildPrdUserPrompt(ideaOrFullPrompt: string): string {
   if (ideaOrFullPrompt.includes("【需求笔记板全文")) {
-    return ideaOrFullPrompt;
+    return [
+      ideaOrFullPrompt,
+      "",
+      "请根据以上内容写出加工后的 PRD 正文：按板块重组扩写，禁止整段复制笔记板或问答原文。",
+    ].join("\n");
   }
   return [
     "项目创意：",
