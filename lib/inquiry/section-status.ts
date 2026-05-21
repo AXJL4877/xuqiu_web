@@ -1,3 +1,8 @@
+import {
+  countValidSectionItems,
+  isStructuredEntryAdequate,
+  isStructuredSectionId,
+} from "@/lib/inquiry/notebook-schema";
 import type { InquiryNotebook, NotebookEntry } from "@/lib/inquiry/types";
 import type { TemplateSectionItem } from "@/lib/template-types";
 
@@ -34,7 +39,21 @@ export function getSectionStatus(
   entry: NotebookEntry | undefined,
   askCount = 0,
 ): SectionCollectStatus {
-  if (!entry || !entry.content.trim()) return "empty";
+  if (!entry) return "empty";
+
+  if (
+    entry.format === "structured" &&
+    isStructuredSectionId(entry.sectionId)
+  ) {
+    const n = countValidSectionItems(entry.sectionId, entry.items);
+    if (n === 0) return "empty";
+    if (isStructuredEntryAdequate(entry.sectionId, entry.items, askCount)) {
+      return "adequate";
+    }
+    return "shallow";
+  }
+
+  if (!entry.content.trim()) return "empty";
 
   const content = entry.content.trim();
   const bullets = countBullets(content);

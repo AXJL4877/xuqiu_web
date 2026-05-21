@@ -9,7 +9,8 @@ import { InquiryConfirmPanel } from "@/components/inquiry/inquiry-confirm-panel"
 import { InquiryQuestionDialog } from "@/components/inquiry/inquiry-question-dialog";
 import { StructuredNotebook } from "@/components/inquiry/structured-notebook";
 import { Button } from "@/components/ui/button";
-import { setEntryContent } from "@/lib/inquiry/notebook";
+import { setEntryContent, setEntryItems } from "@/lib/inquiry/notebook";
+import type { NotebookSectionItem } from "@/lib/inquiry/notebook-schema";
 import type { AiSettings } from "@/lib/ai/settings";
 import { isAiSettingsConfigured } from "@/lib/ai/settings";
 import {
@@ -165,6 +166,12 @@ export function InquiryFlowView({
         if (providerId) body.providerId = providerId;
         const data = await postInquiryFinish(body);
         setFinishData(data);
+        if (data.notebook) {
+          setNotebook(data.notebook);
+          if (nextSession) {
+            persist(nextSession, data.notebook, "confirming");
+          }
+        }
       } catch (e) {
         setFinishData(null);
         setFinishError(
@@ -174,7 +181,7 @@ export function InquiryFlowView({
         setFinishLoading(false);
       }
     },
-    [idea, sections, aiSettings, aiConfigured, providerId],
+    [idea, sections, aiSettings, aiConfigured, providerId, persist],
   );
 
   const enterConfirming = useCallback(
@@ -300,6 +307,25 @@ export function InquiryFlowView({
         prev,
         sectionId,
         content,
+        markUserEdit
+          ? { type: "user_edit", at: new Date().toISOString() }
+          : undefined,
+      );
+      if (session) persist(session, next, phase);
+      return next;
+    });
+  };
+
+  const handleNotebookItemsChange = (
+    sectionId: string,
+    items: NotebookSectionItem[],
+    markUserEdit: boolean,
+  ) => {
+    setNotebook((prev) => {
+      const next = setEntryItems(
+        prev,
+        sectionId,
+        items,
         markUserEdit
           ? { type: "user_edit", at: new Date().toISOString() }
           : undefined,
@@ -529,6 +555,7 @@ export function InquiryFlowView({
           notebook={notebook}
           activeSectionId={question?.sectionId ?? null}
           onEntryChange={handleNotebookEdit}
+          onItemsChange={handleNotebookItemsChange}
           disabled={submitting}
         />
       </div>

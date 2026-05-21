@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ensurePresetTemplates } from "@/lib/template-seed";
 
 const LOCAL_EMAIL = "local@xuqiu.dev";
 
@@ -9,5 +10,6 @@ export async function getLocalUserId(): Promise<string> {
     create: { email: LOCAL_EMAIL },
     update: {},
   });
+  await ensurePresetTemplates(user.id);
   return user.id;
 }

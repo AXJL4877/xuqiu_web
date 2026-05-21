@@ -9,6 +9,7 @@ import { SectionEditor } from "@/components/generate/section-editor";
 import { AiSettingsPanel } from "@/components/shared/ai-settings-panel";
 import { Button } from "@/components/ui/button";
 import type { ApiTemplate } from "@/lib/generate-types";
+import { isPresetTemplateStructure } from "@/lib/preset-templates";
 import { drawerContentDelay } from "@/lib/motion-presets";
 import type { TemplateSectionItem } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
@@ -169,12 +170,19 @@ export function GenerateConfigDrawer({
               <p className="text-muted-foreground text-xs">暂无模板</p>
             ) : (
               <ul className="max-h-48 space-y-2 overflow-y-auto overscroll-contain">
-                {templates.map((t) => (
+                {templates.map((t) => {
+                  const isPreset = isPresetTemplateStructure(t.structure);
+                  return (
                   <li
                     key={t.id}
                     className="bg-muted/40 rounded-lg border border-border/80 p-2.5"
                   >
                     <p className="truncate text-sm font-medium">{t.name}</p>
+                    {isPreset ? (
+                      <p className="text-muted-foreground mt-0.5 text-xs">
+                        系统预置 · 推荐用于 Cursor / AI 编程
+                      </p>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap gap-1">
                       <Button
                         type="button"
@@ -194,19 +202,22 @@ export function GenerateConfigDrawer({
                       >
                         应用
                       </Button>
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="ghost"
-                        className="text-destructive"
-                        tabIndex={open ? 0 : -1}
-                        onClick={() => onRemoveTemplate(t.id)}
-                      >
-                        删除
-                      </Button>
+                      {!isPreset ? (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          className="text-destructive"
+                          tabIndex={open ? 0 : -1}
+                          onClick={() => onRemoveTemplate(t.id)}
+                        >
+                          删除
+                        </Button>
+                      ) : null}
                     </div>
                   </li>
-                ))}
+                );
+                })}
               </ul>
             )}
             {showSave ? (

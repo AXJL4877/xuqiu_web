@@ -3,7 +3,9 @@
 import { memo } from "react";
 
 import { NotebookEntryField } from "@/components/inquiry/notebook-entry-field";
+import { NotebookStructuredField } from "@/components/inquiry/notebook-structured-field";
 import type { InquiryNotebook, NotebookEntry } from "@/lib/inquiry/types";
+import type { NotebookSectionItem } from "@/lib/inquiry/notebook-schema";
 import { cn } from "@/lib/utils";
 
 type StructuredNotebookProps = {
@@ -12,6 +14,11 @@ type StructuredNotebookProps = {
   onEntryChange: (
     sectionId: string,
     content: string,
+    markUserEdit: boolean,
+  ) => void;
+  onItemsChange?: (
+    sectionId: string,
+    items: NotebookSectionItem[],
     markUserEdit: boolean,
   ) => void;
   disabled?: boolean;
@@ -33,13 +40,16 @@ const NotebookEntryRow = memo(function NotebookEntryRow({
   isActive,
   disabled,
   onEntryChange,
+  onItemsChange,
 }: {
   entry: NotebookEntry;
   isActive: boolean;
   disabled: boolean;
   onEntryChange: StructuredNotebookProps["onEntryChange"];
+  onItemsChange?: StructuredNotebookProps["onItemsChange"];
 }) {
   const sources = formatSources(entry);
+  const isStructured = entry.format === "structured";
 
   return (
     <li
@@ -55,18 +65,31 @@ const NotebookEntryRow = memo(function NotebookEntryRow({
         {sources ? (
           <p className="text-muted-foreground mt-0.5 text-[11px]">{sources}</p>
         ) : null}
-        {!entry.content.trim() ? (
+        {!entry.content.trim() && !(entry.items?.length) ? (
           <span className="text-muted-foreground mt-1 inline-block text-[11px]">
             待补充
           </span>
+        ) : isStructured && (entry.items?.length ?? 0) > 0 ? (
+          <span className="text-muted-foreground mt-1 inline-block text-[11px]">
+            {entry.items?.length} 条结构化记录
+          </span>
         ) : null}
       </div>
-      <NotebookEntryField
-        sectionId={entry.sectionId}
-        value={entry.content}
-        disabled={disabled}
-        onCommit={onEntryChange}
-      />
+      {isStructured && onItemsChange ? (
+        <NotebookStructuredField
+          sectionId={entry.sectionId}
+          items={entry.items}
+          disabled={disabled}
+          onChange={(sid, items) => onItemsChange(sid, items, true)}
+        />
+      ) : (
+        <NotebookEntryField
+          sectionId={entry.sectionId}
+          value={entry.content}
+          disabled={disabled}
+          onCommit={onEntryChange}
+        />
+      )}
     </li>
   );
 });
@@ -75,6 +98,7 @@ export function StructuredNotebook({
   notebook,
   activeSectionId,
   onEntryChange,
+  onItemsChange,
   disabled = false,
   className,
 }: StructuredNotebookProps) {
@@ -88,7 +112,9 @@ export function StructuredNotebook({
       <div className="shrink-0 border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">需求笔记板</h2>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          随回答自动更新 · 可直接编辑 · 自动保存
+          {notebook.format === "structured"
+            ? "条目以 JSON 数组沉淀 · 可逐条编辑"
+            : "随回答自动更新 · 可直接编辑 · 自动保存"}
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
@@ -100,6 +126,7 @@ export function StructuredNotebook({
               isActive={entry.sectionId === activeSectionId}
               disabled={disabled}
               onEntryChange={onEntryChange}
+              onItemsChange={onItemsChange}
             />
           ))}
         </ul>

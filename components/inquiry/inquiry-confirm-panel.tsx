@@ -84,6 +84,9 @@ export function InquiryConfirmPanel({
     onGenerate({ acceptedAssumptions: accepted, completionStrategy: strategy });
   };
 
+  const humanFacts =
+    finishData?.humanFacts?.length ? finishData.humanFacts : [];
+
   const motionKey = finishLoading
     ? "finish-loading"
     : finishError
@@ -127,10 +130,38 @@ export function InquiryConfirmPanel({
         >
           <h2 className="text-lg font-semibold">确认需求信息</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            已确认事实将直接写入 PRD；待验证假设默认未勾选，勾选后才会按所选策略写入。
+            请用业务语言核对下方内容；技术细节（如 TypeScript、数据库字段）将在生成
+            PRD 时由系统自动编译，无需您审查。
           </p>
 
-          {finishData.facts.length > 0 ? (
+          {humanFacts.length > 0 ? (
+            <section className="mt-5">
+              <h3 className="text-sm font-medium">已确认的业务理解</h3>
+              <ul className="mt-2 space-y-4">
+                {humanFacts.map((h) => (
+                  <li
+                    key={h.sectionId}
+                    className="rounded-lg border border-border bg-muted/20 p-3"
+                  >
+                    <p className="text-sm font-medium">{h.sectionTitle}</p>
+                    <ul className="text-muted-foreground mt-2 space-y-1.5 text-sm leading-relaxed">
+                      {h.bullets.map((line, i) => (
+                        <li key={`${h.sectionId}-${i}`} className="flex gap-2">
+                          <span className="text-primary shrink-0">·</span>
+                          <span>{line.replace(/^\*\*|\*\*/g, "")}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {h.footnote ? (
+                      <p className="text-muted-foreground mt-2 text-xs italic">
+                        （注：{h.footnote}）
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : finishData.facts.length > 0 ? (
             <section className="mt-5">
               <h3 className="text-sm font-medium">已确认事实</h3>
               <ul className="mt-2 space-y-3">
@@ -140,9 +171,9 @@ export function InquiryConfirmPanel({
                     className="rounded-lg border border-border bg-muted/20 p-3"
                   >
                     <p className="text-sm font-medium">{e.sectionTitle}</p>
-                    <pre className="text-muted-foreground mt-1 whitespace-pre-wrap font-mono text-xs leading-relaxed">
+                    <p className="text-muted-foreground mt-1 text-sm leading-relaxed whitespace-pre-wrap">
                       {e.content}
-                    </pre>
+                    </p>
                   </li>
                 ))}
               </ul>
@@ -231,6 +262,10 @@ export function InquiryConfirmPanel({
               ))}
             </div>
           </section>
+
+          <p className="text-muted-foreground mt-4 text-xs">
+            导出给 Cursor 的 PRD 将自动包含 TypeScript 契约等技术细节，与上方业务确认一致。
+          </p>
 
           <div className="mt-6 flex flex-wrap gap-2">
             <Button type="button" disabled={generating} onClick={handleGenerate}>

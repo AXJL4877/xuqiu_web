@@ -147,7 +147,7 @@ export async function generateAiNextQuestion(
 
   const result = await generateText({
     model: provider.chat(ai.model),
-    system: buildInquirySystemPrompt(),
+    system: buildInquirySystemPrompt(sections),
     prompt: buildInquiryUserPrompt(
       idea,
       sections,

@@ -1,5 +1,5 @@
 /** 将常见序号列表转为 `-` 无序列表 */
-function normalizeListMarkers(line: string): string {
+export function normalizeListMarkers(line: string): string {
   if (!/^\s*(\d+|[一二三四五六七八九十]+)/.test(line)) return line;
   return line
     .replace(/^(\s*)\d+[.)．]\s+/, "$1- ")

@@ -2,7 +2,7 @@ import { resolveAiConfigForRequest } from "@/lib/ai/config";
 import { processInquiryFinish } from "@/lib/inquiry/finish-engine";
 import { inquiryFinishBodySchema } from "@/lib/schemas/api";
 
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 export async function POST(req: Request) {
   let json: unknown;

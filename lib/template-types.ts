@@ -4,9 +4,13 @@ export const templateSectionItemSchema = z.object({
   id: z.string(),
   title: z.string(),
   enabled: z.boolean(),
+  /** 预置模板中的强制板块，不可关闭或删除 */
+  locked: z.boolean().optional(),
 });
 
 export const templateStructureSchema = z.object({
+  /** 系统预置模板标识，用户自建模板勿填 */
+  presetId: z.string().optional(),
   sections: z.array(templateSectionItemSchema),
 });
 
@@ -34,7 +38,29 @@ export function defaultStructure(): TemplateStructure {
 
 export function parseTemplateStructure(raw: unknown): TemplateStructure {
   const r = templateStructureSchema.safeParse(raw);
-  return r.success ? r.data : defaultStructure();
+  return r.success ? normalizeTemplateStructure(r.data) : defaultStructure();
+}
+
+export function isLockedSection(section: TemplateSectionItem): boolean {
+  return section.locked === true;
+}
+
+/** 强制板块始终启用；丢弃无效 locked 标记 */
+export function normalizeTemplateSections(
+  sections: TemplateSectionItem[],
+): TemplateSectionItem[] {
+  return sections.map((s) =>
+    isLockedSection(s) ? { ...s, enabled: true } : s,
+  );
+}
+
+export function normalizeTemplateStructure(
+  structure: TemplateStructure,
+): TemplateStructure {
+  return {
+    ...structure,
+    sections: normalizeTemplateSections(structure.sections),
+  };
 }
 
 export function isCustomSectionId(id: string): boolean {
@@ -67,6 +93,8 @@ export function removeSection(
   id: string,
 ): TemplateSectionItem[] {
   if (sections.length <= 1) return sections;
+  const target = sections.find((s) => s.id === id);
+  if (target && isLockedSection(target)) return sections;
   return sections.filter((s) => s.id !== id);
 }
 

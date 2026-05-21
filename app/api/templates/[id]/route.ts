@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getLocalUserId } from "@/lib/local-user";
 import { prisma } from "@/lib/prisma";
 import { patchTemplateBodySchema } from "@/lib/schemas/api";
+import { isPresetTemplateStructure } from "@/lib/preset-templates";
 import { parseTemplateStructure } from "@/lib/template-types";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -83,6 +84,14 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   const existing = await prisma.template.findFirst({ where: { id, userId } });
   if (!existing) {
     return NextResponse.json({ error: "未找到模板" }, { status: 404 });
+  }
+
+  const structure = parseTemplateStructure(existing.structure);
+  if (isPresetTemplateStructure(structure)) {
+    return NextResponse.json(
+      { error: "系统预置模板不可删除" },
+      { status: 403 },
+    );
   }
 
   await prisma.template.delete({ where: { id } });

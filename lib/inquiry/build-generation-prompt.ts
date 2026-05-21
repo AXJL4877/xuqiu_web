@@ -1,3 +1,5 @@
+import { compileNotebookForMachine } from "@/lib/inquiry/machine-compile";
+import { usesStructuredNotebook } from "@/lib/inquiry/notebook-schema";
 import type {
   CompletionStrategy,
   InquiryAssumption,
@@ -24,14 +26,27 @@ export function buildGenerationUserPrompt(
     completionStrategy,
   } = payload;
 
-  const notebookBlock = notebook.entries
+  const machineNotebook = compileNotebookForMachine(notebook);
+
+  const structured = usesStructuredNotebook(
+    machineNotebook.entries.map((e) => ({
+      id: e.sectionId,
+      title: e.sectionTitle,
+      enabled: true,
+    })),
+  );
+
+  const notebookBlock = machineNotebook.entries
     .filter((e) => e.content.trim())
     .map((e) => `### ${e.sectionTitle}\n${e.content.trim()}`)
     .join("\n\n");
 
-  const factsBlock = notebook.entries
-    .filter((e) => e.content.trim() && !e.content.includes("（用户跳过，待补充）"))
-    .map((e) => `- ${e.sectionTitle}：${e.content.trim().slice(0, 500)}`)
+  const factsBlock = machineNotebook.entries
+    .filter((e) => {
+      const c = e.content.trim();
+      return c && !c.includes("（用户跳过，待补充）");
+    })
+    .map((e) => `- ${e.sectionTitle}：${e.content.trim().slice(0, 800)}`)
     .join("\n");
 
   const acceptedBlock =
@@ -80,6 +95,9 @@ export function buildGenerationUserPrompt(
     "- 勾选假设：可写入对应板块，关键句须带「（推断）」标注。",
     "- 未勾选假设：不得写成已确定需求；保守策略下缺失处用「待补充：…」；标准/积极可将未确认项集中写入「待确认」小节或开放问题。",
     "- 禁止输出文档以外内容；分条仅用 `-`。",
+    structured
+      ? "- 笔记板已编译为技术向表述：data_models 须保留 TypeScript 契约，不得改回大白话。"
+      : "",
     "",
     "请直接输出 PRD 正文。",
   ].join("\n");

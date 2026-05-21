@@ -9,15 +9,24 @@ export type NotebookSource = {
   at: string;
 };
 
+export type NotebookEntryFormat = "plain" | "structured";
+
 export type NotebookEntry = {
   sectionId: string;
   sectionTitle: string;
+  /** plain：自由文本；structured：由 items 派生的展示用 Markdown */
   content: string;
+  format?: NotebookEntryFormat;
+  /** Vibe Coding 模板：板块专属对象数组，为唯一事实源 */
+  items?: Record<string, unknown>[];
   sources: NotebookSource[];
   updatedAt: string;
 };
 
 export type InquiryNotebook = {
+  /** 2 = 结构化数组条目 */
+  version?: number;
+  format?: NotebookEntryFormat;
   entries: NotebookEntry[];
 };
 
@@ -89,6 +98,15 @@ export type InquiryFact = {
   content: string;
 };
 
+/** 确认页「人类视图」：大白话，不含 interface/SQL 等术语 */
+export type InquiryHumanFact = {
+  sectionId: string;
+  sectionTitle: string;
+  summary: string;
+  bullets: string[];
+  footnote?: string;
+};
+
 export type InquiryGap = {
   sectionId: string;
   sectionTitle: string;
@@ -103,9 +121,14 @@ export type InquiryAssumption = {
 };
 
 export type InquiryFinishResponse = {
+  /** 技术向摘要（机器管线用，确认页不展示） */
   facts: InquiryFact[];
+  /** 大白话确认稿（给人看） */
+  humanFacts: InquiryHumanFact[];
   gaps: InquiryGap[];
   assumptions: InquiryAssumption[];
+  /** 经架构师自检后的笔记板（客户端静默同步，确认页不展示技术原文） */
+  notebook: InquiryNotebook;
   mode: "demo" | "live";
 };
 

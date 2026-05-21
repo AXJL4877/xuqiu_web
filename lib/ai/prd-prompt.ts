@@ -1,10 +1,45 @@
 import type { TemplateSectionItem } from "@/lib/template-types";
 
+/** 全栈 / AI 编程模板：各板块写作要点 */
+const FULLSTACK_SECTION_GUIDANCE: Record<string, string> = {
+  core_constraints:
+    "写明技术栈（框架/语言/DB/UI）、目录约定、命名与代码风格、环境变量、鉴权方式、明确禁止事项；表述须可被 AI 直接当作编码约束执行。",
+  data_models:
+    "用 TypeScript 风格描述核心实体：interface/type 字段、可选性、枚举、关联关系；关键 API 请求/响应形状；禁止空泛描述，优先可粘贴实现的契约。",
+  state_transitions:
+    "用状态机或步骤表描述核心流程（加载中/成功/失败/空态/提交中等）；标明触发条件、守卫条件、副作用；覆盖主路径与回退路径。",
+  edge_cases:
+    "枚举网络异常、超时、重复提交、权限不足、数据冲突、部分失败、离线/弱网、并发竞态；每项给出用户可见反馈与恢复策略。",
+  milestones:
+    "拆成可独立交付的阶段（MVP → 增强）；每阶段列出文件/模块级任务、验收标准、建议自测步骤；顺序须适合 Cursor 分步实现。",
+};
+
+function buildSectionGuidanceBlock(
+  enabledSections: TemplateSectionItem[],
+): string {
+  const lines = enabledSections
+    .map((s) => {
+      const hint = FULLSTACK_SECTION_GUIDANCE[s.id];
+      if (!hint) return null;
+      return `- ## ${s.title}：${hint}`;
+    })
+    .filter((line): line is string => line != null);
+
+  if (lines.length === 0) return "";
+
+  return [
+    "",
+    "【各板块内容要求（全栈 / AI 编程向，须写足细节）】",
+    ...lines,
+  ].join("\n");
+}
+
 export function buildPrdSystemPrompt(
   enabledSections: TemplateSectionItem[],
 ): string {
   const titles = enabledSections.map((s) => s.title);
   const ordered = titles.map((t) => `## ${t}`).join("\n");
+  const sectionGuidance = buildSectionGuidanceBlock(enabledSections);
 
   return [
     "你是 PRD 文档生成器。你的唯一任务是输出「需求文档正文」，不输出任何文档以外的文字。",
@@ -32,8 +67,9 @@ export function buildPrdSystemPrompt(
     "",
     "【必须输出的板块（按顺序，`##` 标题逐字一致）】",
     ordered,
+    sectionGuidance,
     "",
-    "【输出】纯 Markdown，可直接导出为 .md 文件。",
+    "【输出】纯 Markdown，可直接导出为 .md 文件；面向 AI 辅助实现，避免产品口号式空话。",
   ].join("\n");
 }
 

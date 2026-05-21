@@ -12,9 +12,13 @@ export function isDeepSeekThinkingModel(model: string): boolean {
   );
 }
 
-/** 将 DeepSeek SSE 中的 reasoning_content 映射为 content，供 AI SDK 解析 */
+/**
+ * 处理 DeepSeek SSE。
+ * @param includeReasoning 为 false 时丢弃 reasoning_content，避免思考过程写入 PRD 正文
+ */
 function transformDeepSeekSseStream(
   body: ReadableStream<Uint8Array>,
+  includeReasoning: boolean,
 ): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
@@ -52,15 +56,26 @@ function transformDeepSeekSseStream(
                 }>;
               };
               const delta = json.choices?.[0]?.delta;
-              if (delta?.reasoning_content && !delta.content) {
-                delta.content = delta.reasoning_content;
+              if (delta?.reasoning_content) {
+                if (!includeReasoning) {
+                  delete delta.reasoning_content;
+                } else if (!delta.content) {
+                  delta.content = delta.reasoning_content;
+                }
+              }
+              const hasPayload =
+                delta?.content != null && String(delta.content).length > 0;
+              if (!includeReasoning && !hasPayload) {
+                continue;
               }
               rewritten.push(`data: ${JSON.stringify(json)}`);
             } catch {
               rewritten.push(line);
             }
           }
-          out.push(rewritten.join("\n"));
+          if (rewritten.length > 0) {
+            out.push(rewritten.join("\n"));
+          }
         }
         if (out.length > 0) {
           controller.enqueue(encoder.encode(`${out.join("\n\n")}\n\n`));
@@ -117,11 +132,14 @@ function createOpenAiCompatibleFetch(
       response.body &&
       url.includes("/chat/completions")
     ) {
-      return new Response(transformDeepSeekSseStream(response.body), {
+      return new Response(
+        transformDeepSeekSseStream(response.body, !disableThinking),
+        {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,
-      });
+        },
+      );
     }
 
     return response;

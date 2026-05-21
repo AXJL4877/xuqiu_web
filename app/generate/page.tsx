@@ -1,3 +1,4 @@
+import { findFullstackCursorTemplate } from "@/lib/preset-templates";
 import { getLocalUserId } from "@/lib/local-user";
 import { prisma } from "@/lib/prisma";
 import { parseTemplateStructure } from "@/lib/template-types";
@@ -27,6 +28,8 @@ export default async function GeneratePage() {
     structure: parseTemplateStructure(t.structure),
   }));
 
+  const defaultTemplate = findFullstackCursorTemplate(initialTemplates);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <Suspense
@@ -36,7 +39,13 @@ export default async function GeneratePage() {
           </p>
         }
       >
-        <GenerateView initialTemplates={initialTemplates} />
+        <GenerateView
+          initialTemplates={initialTemplates}
+          defaultTemplateSections={
+            defaultTemplate?.structure.sections ??
+            initialTemplates[0]?.structure.sections
+          }
+        />
       </Suspense>
     </div>
   );

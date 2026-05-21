@@ -17,13 +17,17 @@ import { BackToHome } from "@/components/shared/back-to-home";
 import { Button } from "@/components/ui/button";
 import { useAiProviders } from "@/hooks/use-ai-providers";
 import { isAiSettingsConfigured } from "@/lib/ai/settings";
+import { runBlockedGenerate } from "@/lib/ai/run-blocked-generate";
 import { sanitizePrdMarkdown } from "@/lib/ai/sanitize-prd";
 import { suggestTitleFromMarkdown } from "@/lib/markdown";
 import type { ApiTemplate } from "@/lib/generate-types";
+import { isPresetTemplateStructure } from "@/lib/preset-templates";
 import {
   addSection,
   defaultStructure,
   EXPORT_FILE_TYPE,
+  isLockedSection,
+  normalizeTemplateSections,
   removeSection,
   updateSectionTitle,
   type TemplateSectionItem,
@@ -44,7 +48,20 @@ import { cn } from "@/lib/utils";
 
 type GenerateViewProps = {
   initialTemplates: ApiTemplate[];
+  /** 进入页面时默认套用的板块（优先全栈预置模板） */
+  defaultTemplateSections?: TemplateSectionItem[];
 };
+
+function resolveInitialSections(
+  defaultTemplateSections?: TemplateSectionItem[],
+): TemplateSectionItem[] {
+  if (defaultTemplateSections?.length) {
+    return normalizeTemplateSections(
+      defaultTemplateSections.map((s) => ({ ...s })),
+    );
+  }
+  return defaultStructure().sections;
+}
 
 function resetGenerateFormState(
   setIdea: (v: string) => void,
@@ -54,9 +71,10 @@ function resetGenerateFormState(
   setStreamMode: (v: "idle" | "demo" | "live") => void,
   setError: (v: string | null) => void,
   previewLockedRef: MutableRefObject<boolean>,
+  defaultTemplateSections?: TemplateSectionItem[],
 ) {
   setIdea("");
-  setSections(defaultStructure().sections);
+  setSections(resolveInitialSections(defaultTemplateSections));
   setPreview("");
   setPreviewDirty(false);
   setStreamMode("idle");
@@ -64,12 +82,15 @@ function resetGenerateFormState(
   previewLockedRef.current = false;
 }
 
-export function GenerateView({ initialTemplates }: GenerateViewProps) {
+export function GenerateView({
+  initialTemplates,
+  defaultTemplateSections,
+}: GenerateViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [idea, setIdea] = useState("");
   const [sections, setSections] = useState<TemplateSectionItem[]>(() =>
-    defaultStructure().sections,
+    resolveInitialSections(defaultTemplateSections),
   );
   const [preview, setPreview] = useState("");
   const [previewDirty, setPreviewDirty] = useState(false);
@@ -77,6 +98,9 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
   const [streamMode, setStreamMode] = useState<"idle" | "demo" | "live">(
     "idle",
   );
+  const [generatingBlockTitle, setGeneratingBlockTitle] = useState<
+    string | null
+  >(null);
   const [configOpen, setConfigOpen] = useState(false);
   const {
     settings: aiSettings,
@@ -111,6 +135,7 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
         setStreamMode,
         setError,
         previewLockedRef,
+        defaultTemplateSections,
       );
       router.replace("/generate");
       return;
@@ -153,7 +178,10 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
 
   const toggleSection = (id: string) => {
     setSections((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)),
+      prev.map((s) => {
+        if (s.id !== id || isLockedSection(s)) return s;
+        return { ...s, enabled: !s.enabled };
+      }),
     );
   };
 
@@ -203,91 +231,63 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
     setPreviewDirty(false);
     previewLockedRef.current = false;
     setStreamMode("idle");
+    setGeneratingBlockTitle(null);
     setStreaming(true);
     setConfigOpen(false);
     setInquiryOpen(false);
 
-    try {
-      const body: {
-        idea: string;
-        sections: TemplateSectionItem[];
-        inquirySessionId?: string;
-        notebook?: InquiryGeneratePayload["notebook"];
-        acceptedAssumptions?: InquiryGeneratePayload["acceptedAssumptions"];
-        gaps?: InquiryGeneratePayload["gaps"];
-        completionStrategy?: InquiryGeneratePayload["completionStrategy"];
-        providerId?: string;
-        ai?: typeof aiSettings;
-      } = { idea: ideaForGen, sections };
-      if (inquiryPayload) {
-        body.notebook = inquiryPayload.notebook;
-        body.acceptedAssumptions = inquiryPayload.acceptedAssumptions;
-        body.gaps = inquiryPayload.gaps;
-        body.completionStrategy = inquiryPayload.completionStrategy;
-        if (inquiryPayload.inquirySessionId) {
-          body.inquirySessionId = inquiryPayload.inquirySessionId;
-        }
-      }
-      if (activeProvider?.id) {
-        body.providerId = activeProvider.id;
-      }
-      if (aiHydrated && isAiSettingsConfigured(aiSettings)) {
-        body.ai = aiSettings;
-      }
+    const aiPayload =
+      aiHydrated && isAiSettingsConfigured(aiSettings)
+        ? aiSettings
+        : undefined;
 
-      const res = await fetch("/api/ai/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+    try {
+      const { markdown: finalText, mode } = await runBlockedGenerate({
+        idea: ideaForGen,
+        sections,
+        inquiryPayload,
+        providerId: activeProvider?.id,
+        ai: aiPayload,
+        onSkeleton: (markdown) => {
+          if (!previewLockedRef.current) {
+            setPreview(sanitizePrdMarkdown(markdown));
+          }
+        },
+        onBlockStart: (_sectionId, title) => {
+          setGeneratingBlockTitle(title);
+        },
+        onBlockChunk: (_sectionId, assembled) => {
+          if (!previewLockedRef.current) {
+            setPreview(sanitizePrdMarkdown(assembled));
+          }
+        },
+        onBlockDone: () => {},
+        onMode: (m) => setStreamMode(m),
       });
 
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        setError(err.error ?? `请求失败 (${res.status})`);
-        return;
+      setStreamMode(mode);
+
+      if (!previewLockedRef.current) {
+        setPreview(sanitizePrdMarkdown(finalText));
       }
-
-      const mode = res.headers.get("X-Xuqiu-Mode");
-      setStreamMode(mode === "live" ? "live" : "demo");
-
-      const reader = res.body?.getReader();
-      if (!reader) {
-        setError("无法读取响应流");
-        return;
-      }
-
-      const dec = new TextDecoder();
-      let buf = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        if (!previewLockedRef.current) {
-          setPreview(sanitizePrdMarkdown(buf));
-        }
-      }
-
-      const finalText = sanitizePrdMarkdown(buf);
-      if (!previewLockedRef.current) setPreview(finalText);
 
       if (mode === "live" && !finalText.trim() && !previewLockedRef.current) {
         setError(
           "模型未返回内容，请检查 API 配置与模型名称（如 deepseek-v4-flash）",
-        );
-      } else if (finalText.startsWith("【生成失败】")) {
-        setError(
-          finalText.replace(/^【生成失败】/, "").split("\n")[0] ?? "生成失败",
         );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "生成失败");
     } finally {
       setStreaming(false);
+      setGeneratingBlockTitle(null);
     }
   };
 
   const applyTemplate = (t: ApiTemplate) => {
-    setSections(t.structure.sections.map((s) => ({ ...s })));
+    setSections(
+      normalizeTemplateSections(t.structure.sections.map((s) => ({ ...s }))),
+    );
   };
 
   const saveTemplate = async () => {
@@ -317,8 +317,19 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
   };
 
   const removeTemplate = async (id: string) => {
+    const target = templates.find((t) => t.id === id);
+    if (target && isPresetTemplateStructure(target.structure)) {
+      setError("系统预置模板不可删除");
+      return;
+    }
     if (!confirm("确定删除该模板？")) return;
-    await fetch(`/api/templates/${id}`, { method: "DELETE" });
+    setError(null);
+    const res = await fetch(`/api/templates/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(err.error ?? "删除失败");
+      return;
+    }
     await loadTemplates();
   };
 
@@ -398,12 +409,16 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
             </h1>
             <p className="text-muted-foreground text-xs sm:text-sm">
               预览区全屏编辑 · 配置从右侧拉出
-              {streamMode !== "idle" ? (
+              {streamMode !== "idle" || generatingBlockTitle ? (
                 <span className="ml-2">
                   ·{" "}
-                  {streamMode === "live"
-                    ? `大模型${activeProvider ? ` · ${activeProvider.name}` : ""}`
-                    : "演示模式"}
+                  {generatingBlockTitle
+                    ? `正在生成：${generatingBlockTitle}`
+                    : streamMode === "live"
+                      ? `大模型${activeProvider ? ` · ${activeProvider.name}` : ""}`
+                      : streamMode === "demo"
+                        ? "演示模式"
+                        : null}
                 </span>
               ) : null}
             </p>
@@ -494,7 +509,9 @@ export function GenerateView({ initialTemplates }: GenerateViewProps) {
             readOnly={streaming && !previewDirty}
             placeholder={
               streaming
-                ? "正在生成 PRD 正文，内容将实时显示…"
+                ? generatingBlockTitle
+                  ? `正在写入「${generatingBlockTitle}」…`
+                  : "正在加载文档骨架（标题由模板固定）…"
                 : "点击「生成配置」填写创意与板块，开始询问收集需求。确认后生成 PRD，生成后可划词辅助编辑。"
             }
             className={cn(

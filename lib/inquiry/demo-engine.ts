@@ -84,6 +84,61 @@ const BUILTIN_BLUEPRINTS: Record<string, SectionBlueprint> = {
       { id: "avail", label: "可用性与容灾" },
     ],
   },
+  core_constraints: {
+    kind: "multi",
+    stem: "技术栈与工程约束上，哪些是必须遵守的？（可多选）",
+    whyAsk: "写入「技术栈与全局规范」，供 AI 编码时直接引用。",
+    options: [
+      { id: "next", label: "Next.js App Router + TypeScript" },
+      { id: "db", label: "PostgreSQL + ORM（如 Prisma）" },
+      { id: "ui", label: "Tailwind + 组件库（如 shadcn/ui）" },
+      { id: "selfhost", label: "需支持私有化 / Docker 部署" },
+    ],
+  },
+  data_models: {
+    kind: "single",
+    stem: "核心业务实体大致有哪些？",
+    whyAsk: "用于撰写 TypeScript 契约与数据模型，避免实现时反复猜字段。",
+    options: [
+      { id: "user_content", label: "用户 + 内容/文档类" },
+      { id: "workflow", label: "流程/状态机驱动（订单、任务等）" },
+      { id: "config", label: "配置/模板/元数据为主" },
+      { id: "mixed", label: "多种实体混合，需分模块描述" },
+    ],
+  },
+  state_transitions: {
+    kind: "single",
+    stem: "用户最常走的一条主流程是什么？",
+    whyAsk: "划定状态机与交互流的主路径，便于分阶段实现。",
+    options: [
+      { id: "crud", label: "创建 → 编辑 → 保存/发布" },
+      { id: "wizard", label: "多步向导（分步收集 → 确认 → 生成）" },
+      { id: "async", label: "提交后异步处理（轮询/流式结果）" },
+      { id: "collab", label: "多人协作与权限流转" },
+    ],
+  },
+  edge_cases: {
+    kind: "multi",
+    stem: "必须优先覆盖的异常场景有哪些？（可多选）",
+    whyAsk: "异常与断网处理决定上线质量，也影响 AI 生成测试清单。",
+    options: [
+      { id: "network", label: "断网 / 弱网 / 请求超时" },
+      { id: "auth", label: "未登录 / 权限不足 / 会话过期" },
+      { id: "conflict", label: "并发冲突 / 重复提交" },
+      { id: "partial", label: "部分成功 / 流式中断" },
+    ],
+  },
+  milestones: {
+    kind: "single",
+    stem: "第一版（MVP）希望多久内可演示？",
+    whyAsk: "用于拆分阶段性开发指令与验收粒度。",
+    options: [
+      { id: "days", label: "约 1–3 天：极简可演示" },
+      { id: "week", label: "约 1 周：核心路径可用" },
+      { id: "twoweeks", label: "约 2 周：含主要异常处理" },
+      { id: "flex", label: "暂无硬性排期，按模块拆分即可" },
+    ],
+  },
 };
 
 function blueprintForSection(section: TemplateSectionItem): SectionBlueprint {

@@ -16,6 +16,10 @@ import { htmlToMarkdown } from "@/lib/markdown";
 
 import { Button } from "@/components/ui/button";
 import {
+  ENGINEERING_SELECTION_ACTIONS,
+  getSelectionActionMeta,
+  getSelectionApplyMode,
+  isSelectionAppendAction,
   isSelectionAskAction,
   SELECTION_ACTIONS,
   type SelectionActionId,
@@ -250,20 +254,35 @@ export function SelectionAiAssistant({
   };
 
   const handleAccept = () => {
-    if (!range || !result.trim()) return;
+    if (!range || !result.trim() || activeAction == null) return;
     const trimmed = result.trimEnd();
+    const append = isSelectionAppendAction(activeAction);
 
     if (range.source === "editor" && editor) {
-      editor
-        .chain()
-        .focus()
-        .insertContentAt({ from: range.from, to: range.to }, trimmed)
-        .run();
+      if (append) {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt({ from: range.to, to: range.to }, `\n\n${trimmed}`)
+          .run();
+      } else {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt({ from: range.from, to: range.to }, trimmed)
+          .run();
+      }
       onApply(htmlToMarkdown(editor.getHTML()));
     } else if (range.source === "textarea") {
-      onApply(
-        replaceTextareaRange(value, range.start, range.end, trimmed),
-      );
+      if (append) {
+        onApply(
+          replaceTextareaRange(value, range.end, range.end, `\n\n${trimmed}`),
+        );
+      } else {
+        onApply(
+          replaceTextareaRange(value, range.start, range.end, trimmed),
+        );
+      }
     }
     closeDiff();
   };
@@ -281,13 +300,16 @@ export function SelectionAiAssistant({
 
   const isAskMode = activeAction != null && isSelectionAskAction(activeAction);
 
+  const actionMeta =
+    activeAction != null ? getSelectionActionMeta(activeAction) : null;
   const actionLabel =
     activeAction === "custom"
       ? "自定义"
       : activeAction === "ask"
         ? "名词解释"
-        : (SELECTION_ACTIONS.find((a) => a.id === activeAction)?.label ??
-          "AI 改写");
+        : (actionMeta?.label ?? "AI 改写");
+  const applyMode =
+    activeAction != null ? getSelectionApplyMode(activeAction) : "replace";
 
   return (
     <>
@@ -301,7 +323,7 @@ export function SelectionAiAssistant({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
             transition={{ duration: 0.16 }}
-            className="bg-popover fixed top-1/2 left-1/2 z-[100] w-[min(420px,calc(100vw-16px))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border p-2 shadow-lg"
+            className="bg-popover fixed top-1/2 left-1/2 z-[100] w-[min(480px,calc(100vw-16px))] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border p-2 shadow-lg"
           >
             <div className="text-muted-foreground mb-1.5 flex items-center gap-1.5 px-1 text-[11px]">
               <Sparkles className="text-primary size-3.5 shrink-0" />
@@ -327,6 +349,29 @@ export function SelectionAiAssistant({
                   {a.label}
                 </Button>
               ))}
+            </div>
+            <div className="mt-2 border-t border-border/80 pt-2">
+              <p className="text-muted-foreground mb-1.5 px-0.5 text-[10px] font-medium tracking-wide">
+                工程化翻译
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {ENGINEERING_SELECTION_ACTIONS.map((a) => (
+                  <Button
+                    key={a.id}
+                    type="button"
+                    size="xs"
+                    variant="outline"
+                    className="border-primary/30 text-primary hover:bg-primary/10"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => void runAction(a.id)}
+                    title={a.instruction}
+                  >
+                    {a.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
               <Button
                 type="button"
                 size="xs"
@@ -404,13 +449,17 @@ export function SelectionAiAssistant({
                     id="selection-diff-title"
                     className="text-sm font-semibold"
                   >
-                    {isAskMode ? "名词解释" : `${actionLabel} · 对比采纳`}
+                    {isAskMode
+                      ? "名词解释"
+                      : `${actionLabel} · ${applyMode === "append" ? "预览追加" : "对比采纳"}`}
                   </h3>
                   <p className="text-muted-foreground text-xs">
                     {streaming
                       ? isAskMode
                         ? "正在流式解释术语…"
-                        : "AI 正在流式改写…"
+                        : applyMode === "append"
+                          ? "AI 正在生成异常分支…"
+                          : "AI 正在流式改写…"
                       : streamMode === "live"
                         ? "大模型输出"
                         : streamMode === "demo"
@@ -421,7 +470,9 @@ export function SelectionAiAssistant({
                             ? `使用 ${providerName}`
                             : isAskMode
                               ? "仅解释专业名词，不修改正文"
-                              : "请确认后替换选区"}
+                              : applyMode === "append"
+                                ? "采纳后保留原文，并在选区下方追加"
+                                : "请确认后替换选区"}
                   </p>
                 </div>
                 <Button
@@ -452,7 +503,11 @@ export function SelectionAiAssistant({
                 </div>
                 <div className="flex min-h-0 flex-col">
                   <p className="text-primary shrink-0 px-4 py-1.5 text-xs font-medium">
-                    {isAskMode ? "名词释义" : "AI 建议"}
+                    {isAskMode
+                      ? "名词释义"
+                      : applyMode === "append"
+                        ? "将追加内容"
+                        : "AI 建议"}
                     {streaming ? (
                       <Loader2 className="ml-1.5 inline size-3.5 animate-spin" />
                     ) : null}
@@ -478,7 +533,7 @@ export function SelectionAiAssistant({
                       disabled={streaming || !result.trim() || Boolean(error)}
                       onClick={handleAccept}
                     >
-                      采纳并替换
+                      {applyMode === "append" ? "采纳并追加" : "采纳并替换"}
                     </Button>
                   </>
                 )}

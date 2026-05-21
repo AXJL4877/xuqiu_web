@@ -13,17 +13,46 @@ const notebookSourceSchema = z.object({
   at: z.string(),
 });
 
-const notebookEntrySchema = z.object({
+const notebookEntryBaseSchema = z.object({
   sectionId: z.string(),
   sectionTitle: z.string(),
   content: z.string().max(50_000),
+  format: z.enum(["plain", "structured"]).optional(),
+  items: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
   sources: z.array(notebookSourceSchema),
   updatedAt: z.string(),
 });
 
-export const inquiryNotebookSchema = z.object({
-  entries: z.array(notebookEntrySchema),
+const notebookEntrySchema = notebookEntryBaseSchema.superRefine((entry, ctx) => {
+  if (entry.format !== "structured") return;
+  if (entry.items !== undefined && !Array.isArray(entry.items)) {
+    ctx.addIssue({
+      code: "custom",
+      message: `${entry.sectionId} 的 items 须为数组`,
+      path: ["items"],
+    });
+  }
 });
+
+export const inquiryNotebookSchema = z
+  .object({
+    version: z.number().int().min(1).max(2).optional(),
+    format: z.enum(["plain", "structured"]).optional(),
+    entries: z.array(notebookEntrySchema),
+  })
+  .superRefine((nb, ctx) => {
+    if (nb.format !== "structured") return;
+    for (let i = 0; i < nb.entries.length; i++) {
+      const e = nb.entries[i];
+      if (e.format === "structured" && (!e.items || !Array.isArray(e.items))) {
+        ctx.addIssue({
+          code: "custom",
+          message: "结构化笔记板条目缺少 items 数组",
+          path: ["entries", i, "items"],
+        });
+      }
+    }
+  });
 
 const inquiryAnswerSchema = z.object({
   questionId: z.string().min(1).max(120),
@@ -63,6 +92,9 @@ export const selectionActionSchema = z.enum([
   "professional",
   "expand",
   "shorten",
+  "to_ts_interface",
+  "add_edge_branches",
+  "to_gherkin",
   "ask",
   "custom",
 ]);
@@ -146,6 +178,11 @@ export const generateBodySchema = z.object({
   completionStrategy: completionStrategySchema.optional(),
   providerId: z.string().min(1).max(64).optional(),
   ai: aiSettingsSchema.optional(),
+});
+
+/** 单板块流式生成（不输出 ## 标题） */
+export const generateBlockBodySchema = generateBodySchema.extend({
+  sectionId: z.string().min(1).max(120),
 });
 
 export const createTemplateBodySchema = z.object({

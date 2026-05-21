@@ -1,8 +1,8 @@
-import type { TemplateSectionItem } from "@/lib/template-types";
+import type { TemplateSectionItem, TemplateStructure } from "@/lib/template-types";
 
 export type ApiTemplate = {
   id: string;
   name: string;
   fileType: string;
-  structure: { sections: TemplateSectionItem[] };
+  structure: TemplateStructure;
 };

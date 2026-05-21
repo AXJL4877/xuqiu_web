@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   isCustomSectionId,
+  isLockedSection,
   type TemplateSectionItem,
 } from "@/lib/template-types";
 import { cn } from "@/lib/utils";
@@ -40,22 +41,27 @@ export function SectionEditor({
     <div className="space-y-3">
       <p className="text-sm font-medium">文档板块</p>
       <ul className="space-y-2">
-        {sections.map((s) => (
+        {sections.map((s) => {
+          const locked = isLockedSection(s);
+          return (
           <li
             key={s.id}
             className="bg-muted/30 flex flex-wrap items-center gap-2 rounded-lg border border-border/80 p-2"
           >
             <button
               type="button"
-              onClick={() => onToggle(s.id)}
+              onClick={() => !locked && onToggle(s.id)}
+              disabled={locked}
+              title={locked ? "预置模板强制板块，不可关闭" : undefined}
               className={cn(
                 "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
                 s.enabled
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border text-muted-foreground",
+                locked && "cursor-not-allowed opacity-80",
               )}
             >
-              {s.enabled ? "开" : "关"}
+              {locked ? "锁定" : s.enabled ? "开" : "关"}
             </button>
             {isCustomSectionId(s.id) ? (
               <input
@@ -73,14 +79,15 @@ export function SectionEditor({
               size="xs"
               variant="ghost"
               className="text-destructive shrink-0"
-              disabled={sections.length <= 1}
+              disabled={sections.length <= 1 || locked}
               onClick={() => onRemove(s.id)}
-              title="删除板块"
+              title={locked ? "预置模板强制板块，不可删除" : "删除板块"}
             >
               <Trash2 className="size-3.5" />
             </Button>
           </li>
-        ))}
+        );
+        })}
       </ul>
       <div className="flex gap-2">
         <input

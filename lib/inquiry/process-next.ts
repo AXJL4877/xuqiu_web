@@ -2,9 +2,14 @@ import type { ResolvedAiConfig } from "@/lib/ai/config";
 import { generateAiNextQuestion } from "@/lib/inquiry/ai-engine";
 import {
   appendAnswerToNotebook,
+  appendItemsToNotebook,
   createNotebookFromSections,
+  seedGoldenStackNotebook,
   syncNotebookSections,
 } from "@/lib/inquiry/notebook";
+import { inferFullstackStructure } from "@/lib/golden-stack";
+import { usesStructuredNotebook } from "@/lib/inquiry/notebook-schema";
+import { resolveAnswerToItems } from "@/lib/inquiry/resolve-structured-answer";
 import {
   buildDemoFollowUpQuestion,
   buildDemoQuestion,
@@ -171,7 +176,9 @@ export async function processInquiryNext(
 
   if (action === "start") {
     session = createSessionMeta(idea, sections);
-    notebook = createNotebookFromSections(sections);
+    const structure = inferFullstackStructure(sections);
+    notebook = createNotebookFromSections(sections, structure);
+    notebook = seedGoldenStackNotebook(notebook, idea, sections);
     return nextQuestionResponse(session, sections, notebook, idea, ai);
   }
 
@@ -181,12 +188,32 @@ export async function processInquiryNext(
       pickNextGapSection(sections, notebook, session.sectionAskCounts)?.id;
     const qIndex = session.questionCount + 1;
     if (sectionId) {
-      notebook = appendAnswerToNotebook(
-        notebook,
-        sectionId,
-        "（用户跳过，待补充）",
-        `Q${qIndex}`,
-      );
+      if (usesStructuredNotebook(sections)) {
+        const items = resolveAnswerToItems(
+          sectionId,
+          null,
+          {
+            questionId: input.questionId ?? "skip",
+            sectionId,
+            skipped: true,
+          },
+        );
+        if (items.length > 0) {
+          notebook = appendItemsToNotebook(
+            notebook,
+            sectionId,
+            items,
+            `Q${qIndex}`,
+          );
+        }
+      } else {
+        notebook = appendAnswerToNotebook(
+          notebook,
+          sectionId,
+          "（用户跳过，待补充）",
+          `Q${qIndex}`,
+        );
+      }
     }
     session = bumpSession(session, 1, sectionId);
     return nextQuestionResponse(session, sections, notebook, idea, ai);
@@ -195,17 +222,38 @@ export async function processInquiryNext(
   if (action === "answer" && input.answer) {
     const { answer } = input;
     const qIndex = session.questionCount + 1;
-    const text =
-      answer.resolvedText?.trim() ||
-      answer.text?.trim() ||
-      null;
-    if (text && answer.sectionId) {
-      notebook = appendAnswerToNotebook(
-        notebook,
-        answer.sectionId,
-        text,
-        `Q${qIndex}`,
-      );
+    const questionRef = `Q${qIndex}`;
+    const structured = usesStructuredNotebook(sections);
+
+    if (answer.sectionId) {
+      if (structured) {
+        const items = resolveAnswerToItems(
+          answer.sectionId,
+          input.pendingQuestion ?? null,
+          answer,
+        );
+        if (items.length > 0) {
+          notebook = appendItemsToNotebook(
+            notebook,
+            answer.sectionId,
+            items,
+            questionRef,
+          );
+        }
+      } else {
+        const text =
+          answer.resolvedText?.trim() ||
+          answer.text?.trim() ||
+          null;
+        if (text) {
+          notebook = appendAnswerToNotebook(
+            notebook,
+            answer.sectionId,
+            text,
+            questionRef,
+          );
+        }
+      }
     }
     session = bumpSession(session, 1, answer.sectionId);
 

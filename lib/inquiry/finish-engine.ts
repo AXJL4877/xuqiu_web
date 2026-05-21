@@ -3,15 +3,22 @@ import { z } from "zod";
 
 import type { ResolvedAiConfig } from "@/lib/ai/config";
 import { createCompatibleOpenAI } from "@/lib/ai/openai-compatible";
+import { validateNotebookWithArchitect } from "@/lib/inquiry/architect-validator";
+import {
+  buildHumanFactsFromNotebook,
+  enhanceHumanFactsWithAi,
+} from "@/lib/inquiry/human-view";
 import type {
   InquiryAssumption,
   InquiryFact,
   InquiryFinishResponse,
   InquiryGap,
+  InquiryHumanFact,
   InquiryNotebook,
   InquirySessionMeta,
 } from "@/lib/inquiry/types";
 import type { TemplateSectionItem } from "@/lib/template-types";
+import { countValidSectionItems } from "@/lib/inquiry/notebook-schema";
 import {
   getSectionAskCount,
   getSectionStatus,
@@ -43,6 +50,9 @@ export function buildFactsFromNotebook(
 ): InquiryFact[] {
   return notebook.entries
     .filter((e) => {
+      if (e.format === "structured") {
+        return countValidSectionItems(e.sectionId, e.items) > 0;
+      }
       const c = e.content.trim();
       return c && !c.includes("（用户跳过，待补充）");
     })
@@ -65,6 +75,9 @@ export function buildGapsFromNotebook(
     .filter((s) => {
       const entry = notebook.entries.find((e) => e.sectionId === s.id);
       const askCount = getSectionAskCount(s.id, counts);
+      if (entry?.format === "structured") {
+        return countValidSectionItems(entry.sectionId, entry.items) === 0;
+      }
       if (!entry?.content.trim()) return true;
       if (entry.content.includes("（用户跳过，待补充）")) return true;
       return !isEntryAdequate(entry, askCount);
@@ -160,14 +173,38 @@ export async function processInquiryFinish(
   session: InquirySessionMeta | null | undefined,
   ai: ResolvedAiConfig | null,
 ): Promise<InquiryFinishResponse> {
-  const facts = buildFactsFromNotebook(notebook);
-  const gaps = buildGapsFromNotebook(sections, notebook, session);
+  const validatedNotebook = await validateNotebookWithArchitect(
+    notebook,
+    idea,
+    ai,
+  );
+
+  const facts = buildFactsFromNotebook(validatedNotebook);
+  const gaps = buildGapsFromNotebook(sections, validatedNotebook, session);
+
+  let humanFacts: InquiryHumanFact[] = buildHumanFactsFromNotebook(
+    idea,
+    validatedNotebook,
+  );
+  if (ai && humanFacts.length > 0) {
+    try {
+      humanFacts = await enhanceHumanFactsWithAi(ai, idea, humanFacts);
+    } catch (e) {
+      console.warn("[inquiry/finish] human facts enhance skipped", e);
+    }
+  }
 
   let assumptions: InquiryAssumption[] = [];
   if (gaps.length > 0) {
     if (ai) {
       try {
-        assumptions = await buildAiAssumptions(ai, idea, notebook, gaps, facts);
+        assumptions = await buildAiAssumptions(
+          ai,
+          idea,
+          validatedNotebook,
+          gaps,
+          facts,
+        );
       } catch (e) {
         console.error("[inquiry/finish] AI assumptions failed", e);
         assumptions = buildDemoAssumptions(idea, gaps);
@@ -179,8 +216,10 @@ export async function processInquiryFinish(
 
   return {
     facts,
+    humanFacts,
     gaps,
     assumptions,
+    notebook: validatedNotebook,
     mode: ai ? "live" : "demo",
   };
 }

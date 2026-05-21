@@ -57,6 +57,34 @@ export function demoSelectionTransform(
       return options?.customPrompt?.trim()
         ? `【按指令调整】${trimmed}`
         : trimmed;
+    case "to_ts_interface":
+      return `\`\`\`typescript
+/** 演示：配置 DeepSeek 后生成真实契约 */
+export interface DemoEntity {
+  id: string;
+  /** 由「${trimmed.slice(0, 24)}${trimmed.length > 24 ? "…" : ""}」提炼 */
+  name: string;
+  createdAt: string;
+}
+\`\`\``;
+    case "add_edge_branches":
+      return [
+        `- **网络超时**：展示 Toast「请求超时」，保留表单输入，支持重试`,
+        `- **校验失败**：字段下 inline 错误，禁用提交直至修正`,
+        `- **权限不足**：跳转登录或 403 页，不泄露敏感信息`,
+      ].join("\n");
+    case "to_gherkin": {
+      const snippet =
+        trimmed.slice(0, 40) + (trimmed.length > 40 ? "…" : "");
+      return [
+        "### Scenario: 演示用例",
+        "",
+        "**Given** 用户已打开相关页面且输入合法",
+        `**When** 用户执行：${snippet}`,
+        "**Then** 系统按 PRD 完成主路径反馈",
+        "**And** 失败时展示明确错误并可恢复",
+      ].join("\n");
+    }
     default:
       return trimmed;
   }
